@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Stop paying for AI tools nobody's using</title>
+<meta name="description" content="HySav shows small teams every AI subscription they pay for, what's actually being used, and what's quietly going to waste. Five-minute setup. No sales call." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problem">Why</a>
+      <a href="#product">Product</a>
+      <a href="demo.html">Live demo</a>
+      <a href="pricing.html">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="#waitlist">Get early access</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker">AI subscription tracking for small teams</span>
+      <h1>You're paying for AI tools <span class="flame">nobody's using.</span></h1>
+      <p class="hero-sub">
+        HySav puts every AI subscription your team pays for on one screen — what it costs,
+        how much is actually getting used, and what's quietly going to waste.
+        Five-minute setup. No sales call. No IT department required.
+      </p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary btn-lg" href="#waitlist">Join the waitlist</a>
+        <a class="btn btn-ghost btn-lg" href="demo.html">Try the live demo</a>
+      </div>
+      <p class="hero-note">Free for your first 5 tools. Forever.</p>
+    </div>
+
+    <!-- mini dashboard card -->
+    <div class="hero-card" aria-hidden="true">
+      <div class="hc-head">
+        <span class="hc-title">Your AI stack — June</span>
+        <span class="hc-badge">$264 wasted</span>
+      </div>
+      <div class="hc-row">
+        <span class="hc-logo" style="background:#10A37F">C</span>
+        <span class="hc-meta">
+          <span class="hc-name">ChatGPT Team</span>
+          <span class="hc-bar"><i data-w="82"></i></span>
+        </span>
+        <span class="hc-cost">$175<small class="hc-sub">/mo</small></span>
+      </div>
+      <div class="hc-row">
+        <span class="hc-logo" style="background:#000000">Cu</span>
+        <span class="hc-meta">
+          <span class="hc-name">Cursor</span>
+          <span class="hc-bar"><i data-w="62"></i></span>
+        </span>
+        <span class="hc-cost">$160<small class="hc-sub">/mo</small></span>
+      </div>
+      <div class="hc-row">
+        <span class="hc-logo" style="background:#5865F2">M</span>
+        <span class="hc-meta">
+          <span class="hc-name">Midjourney</span>
+          <span class="hc-bar"><i class="bad" data-w="11"></i></span>
+        </span>
+        <span class="hc-cost">$60<small class="hc-sub">/mo</small></span>
+      </div>
+      <div class="hc-row">
+        <span class="hc-logo" style="background:#E0447C">R</span>
+        <span class="hc-meta">
+          <span class="hc-name">Runway</span>
+          <span class="hc-bar"><i class="bad" data-w="6"></i></span>
+        </span>
+        <span class="hc-cost">$76<small class="hc-sub">/mo</small></span>
+      </div>
+      <div class="hc-row">
+        <span class="hc-logo" style="background:#C96442">Cl</span>
+        <span class="hc-meta">
+          <span class="hc-name">Claude Team</span>
+          <span class="hc-bar"><i data-w="88"></i></span>
+        </span>
+        <span class="hc-cost">$150<small class="hc-sub">/mo</small></span>
+      </div>
+      <div class="hc-waste">
+        <span>Runway trial converted 33 days ago. Two videos rendered since.</span>
+        <strong>−$76/mo</strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section class="block" id="problem">
+  <div class="wrap">
+    <div class="block-head rv">
+      <span class="kicker">The problem</span>
+      <h2>Somebody signed up for that. Nobody remembers who.</h2>
+      <p>
+        Small teams collect AI subscriptions the way drawers collect cables.
+        One person — usually whoever owns the company card — ends up accidentally
+        responsible for 8 to 15 of them, with zero visibility into any of it.
+      </p>
+    </div>
+    <div class="cards-3">
+      <div class="pcard rv">
+        <div class="ico" style="background:var(--red-soft);color:var(--red)"><i data-lucide="ghost"></i></div>
+        <h3>Forgotten trials</h3>
+        <p>A free trial quietly converts to $76/month. You find out three statements later, if you find out at all.</p>
+      </div>
+      <div class="pcard rv">
+        <div class="ico" style="background:var(--amber-soft);color:var(--amber)"><i data-lucide="hourglass"></i></div>
+        <h3>Credits that expire unused</h3>
+        <p>Image credits, API allowances, generation quotas — paid for monthly, reset monthly, wasted monthly. Nobody's counting.</p>
+      </div>
+      <div class="pcard rv">
+        <div class="ico" style="background:var(--violet-soft);color:var(--violet)"><i data-lucide="copy"></i></div>
+        <h3>Three people, same tool</h3>
+        <p>Your designer pays for one AI copywriter. Your marketer pays for another. They do the same thing. Neither knows.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRODUCT / DEMO ============ -->
+<section class="block tint" id="product">
+  <div class="wrap">
+    <div class="block-head center rv">
+      <span class="kicker">The product</span>
+      <h2>Your whole AI stack. One honest screen.</h2>
+      <p>
+        Every tool, every seat, every credit — with a plain-English read on what's healthy,
+        what's idle, and what's costing you money for nothing. This is a live, clickable demo.
+        Go ahead, poke it.
+      </p>
+    </div>
+    <div class="frame rv">
+      <div class="frame-bar">
+        <i></i><i></i><i></i>
+        <span>hysav.app/dashboard — interactive demo</span>
+      </div>
+      <iframe src="demo.html?embed=1" title="HySav interactive dashboard demo" loading="lazy"></iframe>
+    </div>
+    <div class="demo-cta-band">
+      <a class="btn btn-ghost" href="demo.html">Open the full demo ↗</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="block" id="how">
+  <div class="wrap">
+    <div class="block-head rv">
+      <span class="kicker">How it works</span>
+      <h2>Set up before your coffee cools.</h2>
+    </div>
+    <div class="steps">
+      <div class="step rv">
+        <span class="num">1</span>
+        <h3>Add your tools</h3>
+        <p>Connect your inbox or card feed to auto-detect subscriptions, or add tools by hand. Most teams are done in about five minutes.</p>
+      </div>
+      <div class="step rv">
+        <span class="num">2</span>
+        <h3>See everything in one place</h3>
+        <p>Spend, seats, plan tiers, and credit usage per tool — pulled together on a single dashboard your whole team can read.</p>
+      </div>
+      <div class="step rv">
+        <span class="num">3</span>
+        <h3>Get warned before waste</h3>
+        <p>Trial converting Friday? Credits expiring with 80% unused? A seat idle for a month? You hear about it while it's still fixable.</p>
+      </div>
+      <div class="step rv">
+        <span class="num">4</span>
+        <h3>Cut what you don't need</h3>
+        <p>Mark tools for cancellation, merge duplicate subscriptions, and watch your projected savings add up. That's it. That's the product.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DIFFERENTIATION ============ -->
+<section class="block" id="different">
+  <div class="wrap">
+    <div class="block-head rv">
+      <span class="kicker">Fair warning</span>
+      <h2>We are not the most powerful tool in this category. On purpose.</h2>
+      <p>
+        Big SaaS-management platforms do this too — plus access reviews, compliance audit
+        trails, SSO governance, and a sales process to match. If you have an IT department,
+        they're great. If you're 12 people and a shared credit card, they're a mortgage.
+      </p>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-col them rv">
+        <h3>Enterprise SaaS management</h3>
+        <ul class="diff-list">
+          <li><span class="mark">•</span> Built for IT, security, and finance teams</li>
+          <li><span class="mark">•</span> SSO integrations, access reviews, audit trails</li>
+          <li><span class="mark">•</span> Demo call → sales call → procurement → onboarding</li>
+          <li><span class="mark">•</span> Priced per employee, quoted on request</li>
+          <li><span class="mark">•</span> Powerful. Genuinely. Also overkill for a team of ten.</li>
+        </ul>
+      </div>
+      <div class="diff-col us rv">
+        <h3><span class="brand-word"><span class="brand-hy">Hy</span><span class="brand-sav">Sav</span></span></h3>
+        <ul class="diff-list">
+          <li><span class="mark">✓</span> Built for the founder who got stuck with the card</li>
+          <li><span class="mark">✓</span> One dashboard: spend, usage, waste. That's the feature list.</li>
+          <li><span class="mark">✓</span> Sign up → connect → done. Nobody will call you.</li>
+          <li><span class="mark">✓</span> Flat, public pricing. Free tier included.</li>
+          <li><span class="mark">✓</span> Simple. Genuinely. Exactly enough for a team of ten.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SOCIAL PROOF (placeholder) ============ -->
+<section class="block tint" id="proof">
+  <div class="wrap">
+    <div class="block-head center rv">
+      <span class="kicker">Early access</span>
+      <h2>Teams are lining up. Quotes coming soon.</h2>
+      <p>We're onboarding our first early-access teams now. This space is reserved for what they say — we'd rather show you real words than invent them.</p>
+    </div>
+    <div class="proof-grid">
+      <div class="proof-slot rv">
+        <div class="avatar-ph"></div>
+        “Reserved for an early-access founder with strong opinions about their Midjourney bill.”
+      </div>
+      <div class="proof-slot rv">
+        <div class="avatar-ph"></div>
+        “Reserved for the ops lead who found four duplicate subscriptions in week one.”
+      </div>
+      <div class="proof-slot rv">
+        <div class="avatar-ph"></div>
+        “Reserved for whoever cancels the most forgotten trials. We'll make it a leaderboard.”
+      </div>
+    </div>
+    <div class="logo-strip rv">
+      <div class="logo-ph">Your logo here</div>
+      <div class="logo-ph">Early team</div>
+      <div class="logo-ph">Early team</div>
+      <div class="logo-ph">Early team</div>
+      <div class="logo-ph">Early team</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WAITLIST ============ -->
+<section class="block" id="waitlist">
+  <div class="wrap">
+    <div class="waitlist-panel rv">
+      <div>
+        <span class="kicker" style="color:#F2842E">Early access</span>
+        <h2>Find out what your AI stack really costs.</h2>
+        <p class="lead">
+          Join the waitlist and we'll onboard you in the first wave. Early-access teams
+          get the paid tier free for three months, and a direct line to the people building it.
+        </p>
+      </div>
+      <form class="wform" id="waitlist-form" novalidate>
+        <div class="wform-fields">
+          <label for="wl-email">Work email</label>
+          <input type="email" id="wl-email" placeholder="you@company.com" autocomplete="email" />
+
+          <label for="wl-size">Team size</label>
+          <select id="wl-size">
+            <option>1–5 people</option>
+            <option selected>6–15 people</option>
+            <option>16–30 people</option>
+            <option>30+ people</option>
+          </select>
+
+          <label>Which AI tools do you currently pay for? <span class="muted">(optional)</span></label>
+          <div class="chips">
+            <button class="chip" type="button">ChatGPT</button>
+            <button class="chip" type="button">Claude</button>
+            <button class="chip" type="button">Cursor</button>
+            <button class="chip" type="button">Midjourney</button>
+            <button class="chip" type="button">Perplexity</button>
+            <button class="chip" type="button">ElevenLabs</button>
+            <button class="chip" type="button">Notion AI</button>
+            <button class="chip" type="button">Runway</button>
+            <button class="chip" type="button">GitHub Copilot</button>
+            <button class="chip" type="button">Other / niche tools</button>
+          </div>
+
+          <button class="btn btn-primary" type="submit">Join the waitlist</button>
+          <p class="privacy">No spam. No sales sequence. One email when it's your turn.</p>
+        </div>
+        <div class="wform-success">
+          <div class="big" style="color:#F2842E"><i data-lucide="party-popper" style="width:44px;height:44px"></i></div>
+          <h3>You're on the list.</h3>
+          <p class="muted">We'll email you when your spot opens up. In the meantime, <a href="demo.html" style="color:#F2842E">play with the demo</a>.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot-grid">
+    <div>
+      <a class="brand" href="index.html" style="margin-bottom:10px">
+        <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+        <span class="brand-div" aria-hidden="true"></span>
+        <span class="brand-tag">AI Monit</span>
+      </a>
+      <p style="margin-top:12px">Stop wasting money on AI tools.<br />© 2026 HySav. All rights reserved.</p>
+    </div>
+    <div>
+      <a href="demo.html">Live demo</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="#waitlist">Early access</a>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

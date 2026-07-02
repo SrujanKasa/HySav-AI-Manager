@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HySav">
+  <defs>
+    <linearGradient id="hy" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#FFB347"/>
+      <stop offset="1" stop-color="#EE7010"/>
+    </linearGradient>
+    <linearGradient id="sav" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4D9FFF"/>
+      <stop offset="1" stop-color="#6D3EF0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#050505"/>
+  <text x="7" y="45" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="34" letter-spacing="-1.5">
+    <tspan fill="url(#hy)">H</tspan><tspan fill="url(#sav)">S</tspan>
+  </text>
+</svg>

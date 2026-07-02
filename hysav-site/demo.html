@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Interactive dashboard demo</title>
+<meta name="description" content="A clickable demo of the HySav dashboard: every AI subscription, its real usage, and the money going to waste — for a fictional 6-person startup." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="demo-body">
+
+<!-- ============ TOP BAR ============ -->
+<header class="demo-topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <span class="demo-badge">Interactive demo · sample data · Otterworks Inc.</span>
+    <a class="btn btn-primary btn-sm" href="index.html#waitlist">Get early access</a>
+  </div>
+</header>
+
+<main class="demo-main">
+  <div class="wrap">
+
+    <!-- greeting -->
+    <div class="demo-greeting">
+      <h2>Morning, Maya 👋</h2>
+      <p>Here's what Otterworks is paying for in AI this month — and what it's actually using. Click any tool to dig in.</p>
+    </div>
+
+    <!-- summary stats -->
+    <div class="stat-row">
+      <div class="stat">
+        <span class="lbl">Monthly AI spend</span>
+        <div class="val" id="st-spend">$0</div>
+        <div class="sub">11 tools · 6 people</div>
+      </div>
+      <div class="stat">
+        <span class="lbl">Active tools</span>
+        <div class="val" id="st-tools">0</div>
+        <div class="sub">3 detected from card feed</div>
+      </div>
+      <div class="stat waste">
+        <span class="lbl">Wasted spend</span>
+        <div class="val" id="st-waste">$0</div>
+        <div class="sub" id="st-waste-sub">across 0 tools this month</div>
+      </div>
+      <div class="stat">
+        <span class="lbl">Renewals ≤ 7 days</span>
+        <div class="val" id="st-renew">0</div>
+        <div class="sub">act before they bill</div>
+      </div>
+    </div>
+
+    <!-- alerts -->
+    <div class="alerts" id="alerts"></div>
+
+    <!-- tabs -->
+    <div class="demo-tabs">
+      <button class="demo-tab on" data-tab="overview">Tools</button>
+      <button class="demo-tab" data-tab="team">Team</button>
+    </div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <div id="view-overview">
+      <div class="demo-toolbar">
+        <div class="filter-chips">
+          <button class="fchip on" data-f="all">All</button>
+          <button class="fchip" data-f="healthy">Healthy</button>
+          <button class="fchip" data-f="under">Underused</button>
+          <button class="fchip" data-f="waste">Waste risk</button>
+          <button class="fchip" data-f="dup">Duplicates</button>
+        </div>
+        <select class="sort-select" id="sort-select" aria-label="Sort tools">
+          <option value="cost">Sort: highest cost</option>
+          <option value="usage">Sort: lowest usage</option>
+          <option value="waste">Sort: most wasted</option>
+          <option value="renewal">Sort: renewing soonest</option>
+        </select>
+      </div>
+      <div class="tool-grid" id="tool-grid"></div>
+    </div>
+
+    <!-- ============ TEAM ============ -->
+    <div id="view-team" style="display:none">
+      <div class="overlap-callout">
+        <span class="oc-ico">⚠️</span>
+        <div>
+          <h3>Overlap detected: Jasper + Copy.ai</h3>
+          <p>Priya pays for Jasper ($59/mo), Sam pays for Copy.ai ($49/mo). They cover ~78% of the same
+          ground. Keeping one saves at least $49/mo — the tags below show who's on what.</p>
+        </div>
+      </div>
+      <div class="team-list" id="team-list"></div>
+    </div>
+
+    <!-- return link (hidden in embed mode) -->
+    <div class="demo-return">
+      <p class="muted small">This is sample data for a fictional company. Your dashboard fills itself in about five minutes.</p>
+      <a class="btn btn-primary" href="index.html#waitlist">Get early access to HySav</a>
+    </div>
+
+  </div>
+</main>
+
+<!-- savings ticker -->
+<div class="savings-bar" id="savings-bar">
+  If you cancel what's marked, you save&nbsp;<strong id="savings-val">$0/mo</strong>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="demo.js"></script>
+</body>
+</html>

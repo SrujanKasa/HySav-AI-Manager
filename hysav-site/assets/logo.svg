@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-label="HySav — AI Monit">
+  <defs>
+    <linearGradient id="hy" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#FFB347"/>
+      <stop offset="1" stop-color="#EE7010"/>
+    </linearGradient>
+    <linearGradient id="sav" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4D9FFF"/>
+      <stop offset="1" stop-color="#6D3EF0"/>
+    </linearGradient>
+    <linearGradient id="tag" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6FA9FF"/>
+      <stop offset="1" stop-color="#7C4DF0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4D9FFF"/>
+      <stop offset="1" stop-color="#6D3EF0"/>
+    </linearGradient>
+  </defs>
+  <rect width="760" height="220" rx="24" fill="#050505"/>
+  <text x="52" y="142" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="96" letter-spacing="-3">
+    <tspan fill="url(#hy)">Hy</tspan><tspan fill="url(#sav)">Sav</tspan>
+  </text>
+  <rect x="424" y="66" width="6" height="88" rx="3" fill="url(#bar)"/>
+  <text x="464" y="126" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="40" letter-spacing="10" fill="url(#tag)">AI MONIT</text>
+</svg>

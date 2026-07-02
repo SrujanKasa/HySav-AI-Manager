@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hysav-site",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "hysav-site", "-l", "4173"],
+      "port": 4173
+    }
+  ]
+}
