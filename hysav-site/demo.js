@@ -16,77 +16,77 @@ var MEMBERS = {
 var TOOLS = [
   {
     id: "chatgpt", name: "ChatGPT Team", plan: "Team · 7 seats", cost: 175,
-    logo: "C", color: "#10A37F", usage: 82, unit: "messages quota",
+    usage: 82, unit: "messages quota",
     resetsIn: 12, status: "healthy",
     note: "Solid usage across every seat. Nothing to do here — enjoy a tool that's earning its keep.",
     users: ["MK", "DO", "SR", "PN", "JW", "TO"], idle: [], wasted: 0
   },
   {
     id: "claude", name: "Claude Team", plan: "Team · 6 seats", cost: 150,
-    logo: "Cl", color: "#C96442", usage: 88, unit: "usage allowance",
+    usage: 88, unit: "usage allowance",
     resetsIn: 12, status: "healthy",
     note: "Heaviest-used tool in the stack. Engineering and marketing both live in it.",
     users: ["MK", "DO", "PN", "JW"], idle: [], wasted: 0
   },
   {
     id: "cursor", name: "Cursor", plan: "Pro · 4 seats", cost: 160,
-    logo: "Cu", color: "#1D1B16", usage: 62, unit: "fast-request credits",
+    usage: 62, unit: "fast-request credits",
     resetsIn: 9, status: "healthy",
     note: "62% of fast-request credits used with 9 days left in the cycle. On pace — no waste expected.",
     users: ["DO", "JW", "MK"], idle: [], wasted: 0
   },
   {
     id: "midjourney", name: "Midjourney", plan: "Standard · 2 seats", cost: 60,
-    logo: "M", color: "#5865F2", usage: 11, unit: "GPU hours",
+    usage: 11, unit: "GPU hours",
     resetsIn: 17, status: "waste",
     note: "No images generated in 26 days. Both seats renew July 19. If the brand refresh is done, this is a cancel.",
     users: ["SR", "PN"], idle: ["PN"], wasted: 53
   },
   {
     id: "perplexity", name: "Perplexity Pro", plan: "Pro · 3 seats", cost: 60,
-    logo: "P", color: "#20808D", usage: 41, unit: "pro searches",
+    usage: 41, unit: "pro searches",
     resetsIn: 21, status: "under",
     note: "Two seats active, one fully idle. Tess hasn't run a search in 31 days — drop to 2 seats and save $20/mo.",
     users: ["MK", "PN", "TO"], idle: ["TO"], wasted: 20
   },
   {
     id: "jasper", name: "Jasper", plan: "Creator · 1 seat", cost: 59,
-    logo: "J", color: "#8B3DFF", usage: 9, unit: "word credits",
+    usage: 9, unit: "word credits",
     resetsIn: 5, status: "dup",
     note: "Priya's seat. 78% feature overlap with Copy.ai (Sam's seat). Pick one, save the other's full cost.",
     users: ["PN"], idle: [], wasted: 54
   },
   {
     id: "copyai", name: "Copy.ai", plan: "Pro · 1 seat", cost: 49,
-    logo: "Co", color: "#2D42FF", usage: 24, unit: "word credits",
+    usage: 24, unit: "word credits",
     resetsIn: 14, status: "dup",
     note: "Sam's seat. Overlaps heavily with Jasper. Whichever the team prefers, one of these should go.",
     users: ["SR"], idle: [], wasted: 0
   },
   {
     id: "elevenlabs", name: "ElevenLabs", plan: "Creator · 1 seat", cost: 22,
-    logo: "E", color: "#1D1B16", usage: 93, unit: "character quota",
+    usage: 93, unit: "character quota",
     resetsIn: 22, status: "healthy",
     note: "93% of character quota used with 22 days left. Heads up: at this pace you'll hit the cap around July 24. The next tier is +$22/mo — cheaper than overage.",
     users: ["PN"], idle: [], wasted: 0
   },
   {
     id: "notion", name: "Notion AI", plan: "Add-on · 6 seats", cost: 60,
-    logo: "N", color: "#37352F", usage: 47, unit: "AI responses",
+    usage: 47, unit: "AI responses",
     resetsIn: 12, status: "under",
     note: "Half the team uses it weekly, half never touched it. Worth a quick ask before renewal.",
     users: ["MK", "DO", "SR", "PN", "JW", "TO"], idle: ["JW", "TO"], wasted: 33
   },
   {
     id: "runway", name: "Runway", plan: "Pro · 1 seat", cost: 76,
-    logo: "R", color: "#E0447C", usage: 6, unit: "generation credits",
+    usage: 6, unit: "generation credits",
     resetsIn: 3, status: "waste",
     note: "Free trial auto-converted to paid on May 30. Two videos rendered since. Renews again in 3 days — this is the classic forgotten trial.",
     users: ["SR"], idle: [], wasted: 71
   },
   {
     id: "gamma", name: "Gamma", plan: "Plus · 2 seats", cost: 40,
-    logo: "G", color: "#7B48F5", usage: 18, unit: "AI credits",
+    usage: 18, unit: "AI credits",
     resetsIn: 25, status: "under",
     note: "Bought for the fundraise deck in April. Barely opened since. Pause until the next raise?",
     users: ["MK", "TO"], idle: [], wasted: 33
@@ -163,7 +163,7 @@ function toolCard(t) {
 
   return '<div class="tool-card' + (cancelled ? " cancelled" : "") + '" data-id="' + t.id + '">' +
     '<div class="t-top">' +
-      '<span class="t-logo" style="background:' + t.color + '">' + t.logo + "</span>" +
+      '<span class="t-logo"><img src="assets/logos/' + t.id + '.png" alt="' + t.name + ' logo"/></span>' +
       '<span class="t-id"><span class="t-name">' + t.name + '</span><br/>' +
       '<span class="t-plan">' + t.plan + "</span></span>" +
       '<span class="t-cost"><span class="c">' + fmt(t.cost) + '</span><br/><span class="per">/month</span></span>' +
@@ -230,6 +230,7 @@ function renderTeam() {
     var chips = mine.map(function (t) {
       var idle = t.idle.indexOf(key) !== -1;
       return '<span class="m-tool' + (dupTools[t.id] ? " overlap" : "") + '">' +
+        '<img src="assets/logos/' + t.id + '.png" alt=""/>' +
         t.name + (idle ? " · idle" : "") + (dupTools[t.id] ? " ⚠" : "") + "</span>";
     }).join("");
     return '<div class="member-card">' +

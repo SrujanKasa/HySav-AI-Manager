@@ -269,10 +269,16 @@ img { max-width: 100%; }
 .hc-logo {
   width: 34px; height: 34px;
   border-radius: 9px;
+  background: #fff;
+  border: 1px solid var(--line);
   display: grid; place-items: center;
-  color: #fff; font-weight: 700; font-size: 14px;
-  font-family: var(--font-display);
   flex-shrink: 0;
+}
+.hc-logo img {
+  width: 22px; height: 22px;
+  object-fit: contain;
+  border-radius: 5px;
+  display: block;
 }
 .hc-meta { flex: 1; min-width: 0; }
 .hc-name { font-weight: 600; font-size: 0.9rem; }
@@ -512,6 +518,9 @@ section.block.tint { background: var(--paper-deep); }
 .wform select:focus { border-color: var(--ember); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 7px 14px;
   border-radius: 999px;
   border: 1.5px solid #3A362C;
@@ -522,6 +531,14 @@ section.block.tint { background: var(--paper-deep); }
   font-family: var(--font-body);
   transition: all 0.12s ease;
 }
+.chip img {
+  width: 17px; height: 17px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #fff;
+  padding: 1.5px;
+}
+.chip img.inv { background: transparent; padding: 0; }
 .chip:hover { border-color: var(--ink-faint); }
 .chip.on {
   background: var(--ember);
@@ -816,12 +833,16 @@ footer a:hover { color: var(--ink); }
 .t-logo {
   width: 44px; height: 44px;
   border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
   display: grid; place-items: center;
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
   flex-shrink: 0;
+}
+.t-logo img {
+  width: 28px; height: 28px;
+  object-fit: contain;
+  border-radius: 7px;
+  display: block;
 }
 .t-id { flex: 1; min-width: 0; }
 .t-name { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; }
@@ -958,12 +979,20 @@ footer a:hover { color: var(--ink); }
 .m-role { font-size: 0.78rem; color: var(--ink-faint); }
 .m-tools { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
 .m-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.76rem;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 3px 11px;
+  padding: 3px 11px 3px 6px;
   color: var(--ink-soft);
+}
+.m-tool img {
+  width: 14px; height: 14px;
+  object-fit: contain;
+  border-radius: 3px;
 }
 .m-tool.overlap { border-color: var(--violet); color: var(--violet); background: var(--violet-soft); }
 .m-cost { font-family: var(--font-display); font-weight: 700; text-align: right; min-width: 90px; }

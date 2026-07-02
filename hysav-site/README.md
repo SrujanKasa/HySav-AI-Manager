@@ -28,6 +28,8 @@ pricing.html   Pricing page: 3 flat tiers + FAQ
 styles.css     Full design system (palette, type, components, responsive rules)
 site.js        Shared behavior: scroll reveals, hero bars, waitlist form (mocked)
 assets/        Brand assets: logo.svg (full lockup, dark), favicon.svg
+assets/logos/  Real product icons for the AI tools shown on the site
+               (hero card, demo tool cards, team chips, waitlist chips)
 ```
 
 ## Branding
