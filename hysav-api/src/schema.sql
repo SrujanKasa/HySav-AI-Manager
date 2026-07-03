@@ -122,6 +122,23 @@ CREATE TABLE IF NOT EXISTS notification_prefs (
   PRIMARY KEY (user_id, workspace_id)
 );
 
+-- Razorpay billing. Amounts in paise (INR). A workspace is "paid" when its
+-- latest paid row's period_end is in the future — no plan column to migrate.
+CREATE TABLE IF NOT EXISTS payments (
+  id                  TEXT PRIMARY KEY,
+  workspace_id        TEXT NOT NULL REFERENCES workspaces(id),
+  razorpay_order_id   TEXT UNIQUE,
+  razorpay_payment_id TEXT,
+  amount_paise        INTEGER NOT NULL,
+  currency            TEXT NOT NULL DEFAULT 'INR',
+  status              TEXT NOT NULL CHECK (status IN ('created', 'paid', 'failed')) DEFAULT 'created',
+  period_start        TEXT,
+  period_end          TEXT,
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_payments_workspace ON payments(workspace_id, status);
+
 -- Outbox pattern: every email is recorded here; the transport marks it sent
 -- (Resend) or logged (no provider configured). Nothing secret goes in bodies.
 CREATE TABLE IF NOT EXISTS email_outbox (

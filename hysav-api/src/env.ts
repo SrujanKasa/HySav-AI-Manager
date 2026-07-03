@@ -31,6 +31,12 @@ export const env = {
   emailFrom: process.env.EMAIL_FROM ?? "HySav <alerts@hysav.local>",
   resendApiKey: process.env.RESEND_API_KEY || null,
   seedOnBoot: (process.env.SEED_ON_BOOT ?? "1") === "1",
+  // Razorpay (test keys work — rzp_test_...). Billing endpoints respond with
+  // an honest 503 until these are set, so the code path is deploy-ready now
+  // and activates the moment keys land in the environment.
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID || null,
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || null,
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || null,
   // In dev/test an ephemeral key is generated (encrypted credentials won't
   // survive a restart — acceptable for local use, loud comment for reviewers).
   encryptionKey: (() => {

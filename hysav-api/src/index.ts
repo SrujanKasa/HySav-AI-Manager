@@ -11,12 +11,21 @@ import { invitesRouter, workspacesRouter } from "./routes/workspaces.ts";
 import { toolsRouter } from "./routes/tools.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { demoRouter, insightsRouter } from "./routes/insights.ts";
+import { billingRouter, rawBodies, webhookRouter } from "./routes/billing.ts";
 import { seedDemoWorkspace } from "./seed.ts";
 import { scanWorkspace, sendDigest } from "./services/alerts.ts";
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(
+  express.json({
+    limit: "1mb",
+    // keep the raw bytes around for Razorpay webhook HMAC verification
+    verify: (req, _res, buf) => {
+      rawBodies.set(req as express.Request, buf);
+    },
+  }),
+);
 app.use(express.text({ type: "text/csv", limit: "1mb" }));
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +41,8 @@ api.use("/auth", authRouter);
 api.use("/workspaces", workspacesRouter);
 api.use("/invites", invitesRouter);
 api.use("/demo", demoRouter);
+api.use(webhookRouter); //      /billing/webhook (unauthenticated, HMAC-verified)
+api.use(billingRouter); //      /workspaces/:id/billing, order, verify
 api.use(toolsRouter); //        /workspaces/:id/tools, /tools/:id, usage, import
 api.use(integrationsRouter); // /workspaces/:id/integrations
 api.use(insightsRouter); //     /workspaces/:id/insights, /dashboard, notifications

@@ -19,6 +19,7 @@ tags:
   - name: integrations
   - name: insights
   - name: notifications
+  - name: billing
   - name: demo
 
 paths:
@@ -319,6 +320,64 @@ paths:
       parameters: [{ $ref: "#/components/parameters/workspaceId" }]
       responses:
         "200": { description: Updated prefs }
+
+  /workspaces/{id}/billing:
+    get:
+      tags: [billing]
+      summary: Plan quote + subscription status
+      description: >
+        Pricing is ₹300/month flat plus ₹100/month when the workspace has more
+        than 3 members. Amounts are integer paise. `configured` says whether
+        Razorpay keys are set on the server.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Quote, configured flag, paidUntil/active }
+
+  /workspaces/{id}/billing/order:
+    post:
+      tags: [billing]
+      summary: Create a Razorpay order for this workspace's plan (admin)
+      description: >
+        Returns orderId + the publishable keyId for Razorpay Checkout. Amount
+        is computed server-side from the member count — never trusted from the
+        client. 503 until RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET are configured
+        (test keys work).
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "201": { description: orderId, amountPaise, currency, keyId, description }
+        "503": { description: Razorpay keys not configured yet }
+
+  /workspaces/{id}/billing/verify:
+    post:
+      tags: [billing]
+      summary: Verify a checkout-success signature and activate the plan (admin)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [razorpayOrderId, razorpayPaymentId, razorpaySignature]
+              properties:
+                razorpayOrderId: { type: string }
+                razorpayPaymentId: { type: string }
+                razorpaySignature: { type: string }
+      responses:
+        "200": { description: Plan active; paidUntil returned }
+        "400": { description: Signature verification failed }
+
+  /billing/webhook:
+    post:
+      security: []
+      tags: [billing]
+      summary: Razorpay server-to-server webhook (HMAC-verified)
+      description: >
+        Configure this URL + RAZORPAY_WEBHOOK_SECRET in the Razorpay dashboard.
+        Handles payment.captured / order.paid. The x-razorpay-signature HMAC of
+        the raw body is the credential.
+      responses:
+        "200": { description: Acknowledged }
+        "400": { description: Invalid signature }
 
   /demo/dashboard:
     get:

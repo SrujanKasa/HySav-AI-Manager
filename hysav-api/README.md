@@ -61,6 +61,20 @@ All of them implement the same `UsageProvider` interface and write to the same
 `usage_snapshots` table, so the waste engine never knows whether a number came
 from an API or a human.
 
+## Billing (Razorpay-ready)
+
+Pricing: **₹300/month flat, +₹100/month when the team has more than 3 members**
+(`src/services/billing.ts`, amounts in paise, computed server-side only).
+Endpoints exist and are tested now; they return an honest 503 until you set
+`RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`
+(test-mode `rzp_test_...` keys work as-is):
+
+1. `GET  /workspaces/:id/billing` — quote + paid-until status
+2. `POST /workspaces/:id/billing/order` — creates the Razorpay order; frontend
+   opens Checkout with the returned `orderId` + publishable `keyId`
+3. `POST /workspaces/:id/billing/verify` — checkout success handler → HMAC check → plan active
+4. `POST /billing/webhook` — server-to-server confirmation, raw-body HMAC verified
+
 ## Security notes
 
 - Passwords: scrypt (node:crypto). Sessions: opaque bearer tokens stored as
