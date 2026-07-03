@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "hysav-fullstack",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["hysav-api/src/index.ts"],
+      "port": 3000
+    },
+    {
       "name": "hysav-site",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "hysav-site", "-l", "4173"],

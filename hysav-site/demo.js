@@ -1,6 +1,11 @@
 /* ============================================================
-   HySav — interactive dashboard demo (self-contained mock data)
+   HySav — interactive dashboard demo
    Fictional company: Otterworks (6-person startup)
+
+   Data comes from the HySav API when it's serving this site
+   (GET /api/v1/demo/dashboard — real rows + real waste math from
+   hysav-api's seeded demo workspace). The arrays below are the
+   offline fallback so the static site still demos standalone.
    Rename: find & replace "HySav"
    ============================================================ */
 
@@ -335,8 +340,29 @@ if (location.search.indexOf("embed=1") !== -1) {
 }
 
 /* ---------- init ---------- */
-renderAlerts();
-renderStats();
-renderTools();
-renderTeam();
-renderSavings();
+function renderAll() {
+  renderAlerts();
+  renderStats();
+  renderTools();
+  renderTeam();
+  renderSavings();
+}
+
+(function init() {
+  fetch("/api/v1/demo/dashboard", { headers: { Accept: "application/json" } })
+    .then(function (r) {
+      if (!r.ok) throw new Error("api " + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      if (data && data.tools && data.tools.length) {
+        MEMBERS = data.members;
+        TOOLS = data.tools;
+        ALERTS = data.alerts;
+      }
+    })
+    .catch(function () {
+      /* static hosting or API down — keep the baked-in sample data */
+    })
+    .then(renderAll);
+})();

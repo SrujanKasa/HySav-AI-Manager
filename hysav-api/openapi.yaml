@@ -1,0 +1,384 @@
+openapi: 3.1.0
+info:
+  title: HySav API
+  version: "1.0.0"
+  description: >
+    HySav | AI Monit backend. AI-subscription tracking, usage monitoring, and
+    waste detection for small teams. All endpoints are under /api/v1. Auth is
+    an opaque bearer token from /auth/register or /auth/login. Money is integer
+    cents; timestamps are ISO-8601 strings.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: auth
+  - name: workspaces
+  - name: tools
+  - name: usage
+  - name: integrations
+  - name: insights
+  - name: notifications
+  - name: demo
+
+paths:
+  /health:
+    get:
+      security: []
+      tags: [demo]
+      summary: Liveness check
+      responses:
+        "200": { description: OK }
+
+  /auth/register:
+    post:
+      security: []
+      tags: [auth]
+      summary: Create an account + its first workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password, workspaceName]
+              properties:
+                email: { type: string, format: email }
+                name: { type: string }
+                password: { type: string, minLength: 10 }
+                workspaceName: { type: string }
+      responses:
+        "201":
+          description: Account created; returns bearer token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+                  workspaceId: { type: string }
+        "409": { description: Email already registered }
+        "429": { description: Rate limited (10/min per IP on auth routes) }
+
+  /auth/login:
+    post:
+      security: []
+      tags: [auth]
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: Token + user }
+        "401": { description: Invalid credentials (same response for unknown email) }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current session token
+      responses:
+        "204": { description: Logged out }
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Current user + workspace memberships
+      responses:
+        "200": { description: User and workspaces }
+
+  /workspaces/{id}:
+    get:
+      tags: [workspaces]
+      summary: Workspace details + members
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Workspace with members }
+        "404": { description: Not found or not a member }
+    patch:
+      tags: [workspaces]
+      summary: Rename workspace (admin)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Updated }
+
+  /workspaces/{id}/invites:
+    post:
+      tags: [workspaces]
+      summary: Invite a teammate by email (admin)
+      description: Sends an invite email and returns the invite link (7-day expiry).
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [admin, member], default: member }
+      responses:
+        "201": { description: Invite created; includes inviteLink }
+
+  /invites/accept:
+    post:
+      security: []
+      tags: [workspaces]
+      summary: Accept an invite (creates the account if needed)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, name, password]
+              properties:
+                token: { type: string }
+                name: { type: string }
+                password: { type: string, minLength: 10 }
+      responses:
+        "201": { description: Joined workspace }
+        "400": { description: Invalid, expired, or used invite }
+
+  /workspaces/{id}/tools:
+    get:
+      tags: [tools]
+      summary: List subscriptions (with member assignments)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200":
+          description: Tools
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Tool" }
+    post:
+      tags: [tools]
+      summary: Add a subscription (admin)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ToolInput" }
+      responses:
+        "201": { description: Created }
+
+  /workspaces/{id}/tools/import:
+    post:
+      tags: [tools]
+      summary: CSV import (admin) — the primary bulk path
+      description: >
+        Body is CSV text (Content-Type text/csv, or JSON {"csv": "..."}).
+        Header row: name,category,cost,billing_cycle,renewal_date,plan,status,
+        credit_limit,credit_unit,used. Creates unknown tools; appends a usage
+        snapshot when `used` is present. Cost is dollars.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "201": { description: Per-row results }
+
+  /tools/{id}:
+    get:
+      tags: [tools]
+      summary: Tool detail + full snapshot history (trend data)
+      parameters: [{ $ref: "#/components/parameters/toolId" }]
+      responses:
+        "200": { description: Tool with members and snapshots }
+    patch:
+      tags: [tools]
+      summary: Update a tool (admin)
+      parameters: [{ $ref: "#/components/parameters/toolId" }]
+      responses:
+        "200": { description: Updated }
+    delete:
+      tags: [tools]
+      summary: Delete a tool and its history (admin)
+      parameters: [{ $ref: "#/components/parameters/toolId" }]
+      responses:
+        "204": { description: Deleted }
+
+  /tools/{id}/usage:
+    post:
+      tags: [usage]
+      summary: Report usage manually (any member)
+      description: >
+        Appends a usage snapshot — the same table provider syncs write to, so
+        downstream logic doesn't care where numbers come from. Also refreshes
+        the reporter's seat activity.
+      parameters: [{ $ref: "#/components/parameters/toolId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [used]
+              properties:
+                used: { type: number, description: cumulative usage this billing period }
+                limit: { type: number, nullable: true }
+                capturedAt: { type: string, format: date-time }
+      responses:
+        "201": { description: Snapshot recorded }
+
+  /workspaces/{id}/integrations:
+    get:
+      tags: [integrations]
+      summary: Provider catalog (with honest live/stub status) + connected credentials
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Providers and connections (keyLast4 only — never the key) }
+    post:
+      tags: [integrations]
+      summary: Connect a provider credential (admin)
+      description: Key is AES-256-GCM encrypted at rest and never returned or logged.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, apiKey]
+              properties:
+                provider: { type: string, enum: [openai, anthropic, vercel] }
+                apiKey: { type: string }
+      responses:
+        "201": { description: Stored; returns keyLast4 }
+        "400": { description: Provider is stubbed / manual-only }
+
+  /workspaces/{id}/integrations/{provider}:
+    delete:
+      tags: [integrations]
+      summary: Disconnect a provider (admin)
+      parameters:
+        - { $ref: "#/components/parameters/workspaceId" }
+        - { name: provider, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+
+  /workspaces/{id}/integrations/{provider}/sync:
+    post:
+      tags: [integrations]
+      summary: Pull fresh usage from the provider API (admin)
+      description: >
+        Syncs every tool whose usage_source matches the provider. Live today:
+        openai (org Costs API, Admin key), anthropic (Admin cost report).
+        vercel is stubbed and rejects sync.
+      parameters:
+        - { $ref: "#/components/parameters/workspaceId" }
+        - { name: provider, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Per-tool sync results }
+
+  /workspaces/{id}/insights:
+    get:
+      tags: [insights]
+      summary: Waste report — flags, per-tool health, wasted spend total
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Waste report (cents) }
+
+  /workspaces/{id}/dashboard:
+    get:
+      tags: [insights]
+      summary: Dashboard payload (members, tools with usage %, alerts)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Same shape the frontend demo renders }
+
+  /workspaces/{id}/notifications/scan:
+    post:
+      tags: [notifications]
+      summary: Run the waste/renewal alert scan now (admin)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Flags found; deduped emails queued }
+
+  /workspaces/{id}/notifications/digest:
+    post:
+      tags: [notifications]
+      summary: Send the summary digest now (admin)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Digest queued for members with the pref enabled }
+
+  /workspaces/{id}/notification-prefs:
+    get:
+      tags: [notifications]
+      summary: Current user's prefs for this workspace
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: wasteAlerts / renewalAlerts / weeklyDigest booleans }
+    patch:
+      tags: [notifications]
+      summary: Update prefs (per user, per workspace)
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Updated prefs }
+
+  /demo/dashboard:
+    get:
+      security: []
+      tags: [demo]
+      summary: Public read-only dashboard for the seeded demo workspace
+      responses:
+        "200": { description: Dashboard payload the marketing site's live demo renders }
+        "503": { description: Demo workspace not seeded }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    workspaceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    toolId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+    ToolInput:
+      type: object
+      required: [name, category, costCents, renewalDate]
+      properties:
+        name: { type: string }
+        slug: { type: string, pattern: "^[a-z0-9-]+$" }
+        category:
+          type: string
+          enum: [llm-chat, coding-assistant, image-gen, video-gen, copywriting, voice, search, productivity, presentation, other]
+        icon: { type: string, format: uri, nullable: true }
+        plan: { type: string }
+        status: { type: string, enum: [active, trial, cancelled], default: active }
+        costCents: { type: integer, minimum: 0 }
+        billingCycle: { type: string, enum: [monthly, annual], default: monthly }
+        renewalDate: { type: string, format: date }
+        creditLimit: { type: number, nullable: true }
+        creditUnit: { type: string, nullable: true }
+        usageSource: { type: string, enum: [manual, openai, anthropic, vercel], default: manual }
+        note: { type: string, nullable: true }
+        memberIds: { type: array, items: { type: string } }
+    Tool:
+      allOf:
+        - $ref: "#/components/schemas/ToolInput"
+        - type: object
+          properties:
+            id: { type: string }
+            workspaceId: { type: string }
+            lastUsageUpdateAt: { type: string, nullable: true }
+            createdAt: { type: string }
+            updatedAt: { type: string }
