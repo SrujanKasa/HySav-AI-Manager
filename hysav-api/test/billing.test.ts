@@ -2,27 +2,44 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   quoteForMembers,
+  trialEndsAt,
   verifyCheckoutSignature,
   verifyWebhookSignature,
 } from "../src/services/billing.ts";
 
-describe("quoteForMembers — ₹300 base, +₹100 above 3 people", () => {
+describe("quoteForMembers — ₹300 base, +₹100 above 3, +₹50/person beyond 4", () => {
   it("charges the flat base for teams of up to 3", () => {
     for (const n of [1, 2, 3]) {
       const q = quoteForMembers(n);
       expect(q.amountPaise).toBe(30_000);
       expect(q.extraPaise).toBe(0);
+      expect(q.perPersonPaise).toBe(0);
       expect(q.currency).toBe("INR");
     }
   });
 
-  it("adds ₹100 once the team crosses 3", () => {
-    for (const n of [4, 7, 30]) {
-      const q = quoteForMembers(n);
-      expect(q.amountPaise).toBe(40_000);
-      expect(q.basePaise).toBe(30_000);
-      expect(q.extraPaise).toBe(10_000);
-    }
+  it("adds ₹100 for the 4th person (₹400 total)", () => {
+    const q = quoteForMembers(4);
+    expect(q.basePaise).toBe(30_000);
+    expect(q.extraPaise).toBe(10_000);
+    expect(q.perPersonPaise).toBe(0);
+    expect(q.amountPaise).toBe(40_000);
+  });
+
+  it("adds ₹50 per person beyond 4", () => {
+    expect(quoteForMembers(5).amountPaise).toBe(45_000); //  400 + 50
+    expect(quoteForMembers(6).amountPaise).toBe(50_000); //  400 + 100
+    expect(quoteForMembers(8).amountPaise).toBe(60_000); //  400 + 200
+    const q = quoteForMembers(10);
+    expect(q.perPersonPaise).toBe(30_000); //                6 × ₹50
+    expect(q.amountPaise).toBe(70_000);
+    expect(q.description).toContain("₹50×6");
+  });
+});
+
+describe("trialEndsAt — Starter plan 3-day trial", () => {
+  it("ends exactly 3 days after workspace creation", () => {
+    expect(trialEndsAt("2026-07-01T00:00:00.000Z")).toBe("2026-07-04T00:00:00.000Z");
   });
 });
 

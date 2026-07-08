@@ -19,6 +19,7 @@ import { HttpError, parseBody, rateLimit, requireAuth, requireMembership } from 
 import {
   PRICING,
   quoteForMembers,
+  trialEndsAt,
   verifyCheckoutSignature,
   verifyWebhookSignature,
 } from "../services/billing.ts";
@@ -60,13 +61,19 @@ billingRouter.use(requireAuth);
 
 billingRouter.get("/workspaces/:id/billing", (req, res) => {
   requireMembership(req, req.params.id);
+  const ws = one<{ created_at: string }>("SELECT created_at FROM workspaces WHERE id = ?", req.params.id);
   const quote = quoteForMembers(memberCount(req.params.id));
   const until = paidUntil(req.params.id);
+  // Starter plan: every workspace gets a 3-day full-feature trial from creation
+  const trialUntil = trialEndsAt(ws!.created_at);
+  const trialActive = trialUntil > now();
+  const paidActive = !!until && until > now();
   res.json({
     quote,
     configured: !!(env.razorpayKeyId && env.razorpayKeySecret),
     paidUntil: until,
-    active: !!until && until > now(),
+    trial: { endsAt: trialUntil, active: trialActive, days: PRICING.TRIAL_DAYS },
+    active: paidActive || trialActive,
   });
 });
 

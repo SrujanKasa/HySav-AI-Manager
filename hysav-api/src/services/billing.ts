@@ -1,12 +1,19 @@
 // Billing logic — pure functions, Razorpay-flavored but SDK-free.
-// Pricing model: ₹300/month flat, +₹100/month once the team has more than 3
-// members. Amounts are integer paise (Razorpay's unit for INR).
+// Pricing model (INR, integer paise — Razorpay's unit):
+//   ₹300/month flat for teams of up to 3
+//   +₹100/month once the team is larger than 3
+//   +₹50/month per person beyond 4
+//   → 3 people ₹300 · 4 people ₹400 · 5 ₹450 · 6 ₹500 ...
+// Every new workspace also gets a 3-day full-feature trial (Starter plan).
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const PRICING = {
-  BASE_PAISE: 300_00, //     ₹300 / month
-  EXTRA_PAISE: 100_00, //    +₹100 / month
-  INCLUDED_MEMBERS: 3, //    the +₹100 kicks in above this
+  BASE_PAISE: 300_00, //       ₹300 / month
+  EXTRA_PAISE: 100_00, //      +₹100 / month above INCLUDED_MEMBERS
+  INCLUDED_MEMBERS: 3,
+  PER_PERSON_PAISE: 50_00, //  +₹50 / month per person beyond PER_PERSON_AFTER
+  PER_PERSON_AFTER: 4,
+  TRIAL_DAYS: 3,
   PERIOD_DAYS: 30,
   CURRENCY: "INR",
 } as const;
@@ -15,6 +22,7 @@ export interface PlanQuote {
   memberCount: number;
   basePaise: number;
   extraPaise: number;
+  perPersonPaise: number;
   amountPaise: number;
   currency: string;
   description: string;
@@ -22,17 +30,29 @@ export interface PlanQuote {
 
 export function quoteForMembers(memberCount: number): PlanQuote {
   const extra = memberCount > PRICING.INCLUDED_MEMBERS ? PRICING.EXTRA_PAISE : 0;
+  const beyond = Math.max(0, memberCount - PRICING.PER_PERSON_AFTER);
+  const perPerson = beyond * PRICING.PER_PERSON_PAISE;
+  const amount = PRICING.BASE_PAISE + extra + perPerson;
+  let description = `HySav Team — ₹300/month (up to ${PRICING.INCLUDED_MEMBERS} people)`;
+  if (perPerson > 0) {
+    description = `HySav Team Plus — ₹300 + ₹100 + ₹50×${beyond} (team of ${memberCount})`;
+  } else if (extra > 0) {
+    description = `HySav Team Plus — ₹300 base + ₹100 (team of ${memberCount})`;
+  }
   return {
     memberCount,
     basePaise: PRICING.BASE_PAISE,
     extraPaise: extra,
-    amountPaise: PRICING.BASE_PAISE + extra,
+    perPersonPaise: perPerson,
+    amountPaise: amount,
     currency: PRICING.CURRENCY,
-    description:
-      extra > 0
-        ? `HySav Team Plus — ₹300 base + ₹100 (team of ${memberCount})`
-        : `HySav Team — ₹300/month (up to ${PRICING.INCLUDED_MEMBERS} people)`,
+    description,
   };
+}
+
+/** Starter plan = 3-day full-feature trial, measured from workspace creation. */
+export function trialEndsAt(workspaceCreatedAt: string): string {
+  return new Date(new Date(workspaceCreatedAt).getTime() + PRICING.TRIAL_DAYS * 86_400_000).toISOString();
 }
 
 function safeEqualHex(aHex: string, bHex: string): boolean {

@@ -63,8 +63,11 @@ from an API or a human.
 
 ## Billing (Razorpay-ready)
 
-Pricing: **₹300/month flat, +₹100/month when the team has more than 3 members**
-(`src/services/billing.ts`, amounts in paise, computed server-side only).
+Pricing (`src/services/billing.ts`, amounts in paise, computed server-side only):
+**₹300/month up to 3 people, +₹100/month past 3, +₹50/month per person beyond 4**
+(4 people ₹400 · 5 ₹450 · 6 ₹500). Every new workspace gets the **Starter plan:
+a 3-day full-feature trial** measured from workspace creation — `GET
+/workspaces/:id/billing` reports `trial.endsAt` and `active` covers trial or paid.
 Endpoints exist and are tested now; they return an honest 503 until you set
 `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`
 (test-mode `rzp_test_...` keys work as-is):

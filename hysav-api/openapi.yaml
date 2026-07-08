@@ -324,14 +324,17 @@ paths:
   /workspaces/{id}/billing:
     get:
       tags: [billing]
-      summary: Plan quote + subscription status
+      summary: Plan quote + trial/subscription status
       description: >
-        Pricing is ₹300/month flat plus ₹100/month when the workspace has more
-        than 3 members. Amounts are integer paise. `configured` says whether
-        Razorpay keys are set on the server.
+        Pricing is ₹300/month for up to 3 members, +₹100/month past 3, and
+        +₹50/month per member beyond 4 (amounts in integer paise, computed from
+        the live member count). Every workspace starts on the Starter plan — a
+        3-day full-feature trial from creation, returned as `trial.endsAt`.
+        `active` is true during the trial or a paid period. `configured` says
+        whether Razorpay keys are set on the server.
       parameters: [{ $ref: "#/components/parameters/workspaceId" }]
       responses:
-        "200": { description: Quote, configured flag, paidUntil/active }
+        "200": { description: Quote, configured flag, trial status, paidUntil/active }
 
   /workspaces/{id}/billing/order:
     post:
