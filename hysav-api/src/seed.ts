@@ -1,12 +1,12 @@
 // Seeds the demo workspace ("Otterworks Inc.") with the same fictional
-// 6-person startup the frontend demo used to hardcode — but now as real rows
-// with ~30 days of usage-snapshot history, so the dashboard's numbers come
-// out of the actual waste engine instead of being asserted.
+// 6-person startup the frontend demo used to hardcode — but now as real
+// documents with ~30 days of usage-snapshot history, so the dashboard's
+// numbers come out of the actual waste engine instead of being asserted.
 //
 // Demo login (documented, not secret): maya@otterworks.dev / otterworks-demo!
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "./crypto.ts";
-import { all, db, now, one, run, uuid } from "./db.ts";
+import { insert, now, one, uuid } from "./db.ts";
 import { quoteForMembers } from "./services/billing.ts";
 
 const DAY_MS = 86_400_000;
@@ -117,48 +117,62 @@ const TOOLS: SeedTool[] = [
   },
 ];
 
-export function seedDemoWorkspace(): boolean {
-  if (one("SELECT id FROM workspaces WHERE name = 'Otterworks Inc.'")) return false;
+export async function seedDemoWorkspace(): Promise<boolean> {
+  if (await one("workspaces", { name: "Otterworks Inc." })) return false;
 
   const ts = now();
   const nowMs = Date.now();
   const workspaceId = uuid();
-  run("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, ?)", workspaceId, "Otterworks Inc.", ts);
+  await insert("workspaces", { id: workspaceId, name: "Otterworks Inc.", created_at: ts });
 
   const userIdByKey = new Map<string, string>();
   for (const m of MEMBERS) {
     const userId = uuid();
     userIdByKey.set(m.key, userId);
     const email = m.name.split(" ")[0].toLowerCase() + "@otterworks.dev";
-    run(
-      "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-      userId, email, m.name, hashPassword("otterworks-demo!"), ts,
-    );
-    run(
-      "INSERT INTO memberships (user_id, workspace_id, role, initials, color, title, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      userId, workspaceId, m.role, m.key, m.color, m.title, ts,
-    );
+    await insert("users", { id: userId, email, name: m.name, password_hash: hashPassword("otterworks-demo!"), created_at: ts });
+    await insert("memberships", {
+      user_id: userId,
+      workspace_id: workspaceId,
+      role: m.role,
+      initials: m.key,
+      color: m.color,
+      title: m.title,
+      created_at: ts,
+    });
   }
 
   for (const t of TOOLS) {
     const toolId = uuid();
-    const renewal = new Date(nowMs + t.renewInDays * DAY_MS).toISOString().slice(0, 10);
-    const lastUpdate = new Date(nowMs - DAY_MS).toISOString();
-    run(
-      `INSERT INTO tools (id, workspace_id, name, slug, category, plan, status, cost_cents, billing_cycle,
-         renewal_date, credit_limit, credit_unit, usage_source, note, last_usage_update_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'monthly', ?, ?, ?, 'manual', ?, ?, ?, ?)`,
-      toolId, workspaceId, t.name, t.slug, t.category, t.plan, t.status,
-      Math.round(t.costDollars * 100), renewal, t.limit, t.unit, t.note, lastUpdate, ts, ts,
-    );
+    await insert("tools", {
+      id: toolId,
+      workspace_id: workspaceId,
+      name: t.name,
+      slug: t.slug,
+      category: t.category,
+      icon: null,
+      plan: t.plan,
+      status: t.status,
+      cost_cents: Math.round(t.costDollars * 100),
+      billing_cycle: "monthly",
+      renewal_date: new Date(nowMs + t.renewInDays * DAY_MS).toISOString().slice(0, 10),
+      credit_limit: t.limit,
+      credit_unit: t.unit,
+      usage_source: "manual",
+      note: t.note,
+      last_usage_update_at: new Date(nowMs - DAY_MS).toISOString(),
+      created_at: ts,
+      updated_at: ts,
+    });
 
     for (const key of t.users) {
       const idleDays = t.idle.includes(key) ? 36 : 2;
-      run(
-        "INSERT INTO tool_members (tool_id, user_id, is_owner, last_active_at) VALUES (?, ?, ?, ?)",
-        toolId, userIdByKey.get(key)!, key === t.users[0] ? 1 : 0,
-        new Date(nowMs - idleDays * DAY_MS).toISOString(),
-      );
+      await insert("tool_members", {
+        tool_id: toolId,
+        user_id: userIdByKey.get(key)!,
+        is_owner: key === t.users[0] ? 1 : 0,
+        last_active_at: new Date(nowMs - idleDays * DAY_MS).toISOString(),
+      });
     }
 
     // ~15 snapshots over the last 30 days, interpolating from the 30d-ago
@@ -167,14 +181,14 @@ export function seedDemoWorkspace(): boolean {
     for (let i = 0; i <= steps; i++) {
       const daysAgo = 30 - (30 * i) / steps;
       const pct = t.usedPct30dAgo + ((t.usedPctNow - t.usedPct30dAgo) * i) / steps;
-      run(
-        `INSERT INTO usage_snapshots (id, tool_id, captured_at, used_amount, limit_amount, source)
-         VALUES (?, ?, ?, ?, ?, 'manual')`,
-        uuid(), toolId,
-        new Date(nowMs - daysAgo * DAY_MS).toISOString(),
-        Math.round((pct / 100) * t.limit * 100) / 100,
-        t.limit,
-      );
+      await insert("usage_snapshots", {
+        id: uuid(),
+        tool_id: toolId,
+        captured_at: new Date(nowMs - daysAgo * DAY_MS).toISOString(),
+        used_amount: Math.round((pct / 100) * t.limit * 100) / 100,
+        limit_amount: t.limit,
+        source: "manual",
+      });
     }
   }
   return true;
@@ -188,7 +202,7 @@ export function seedDemoWorkspace(): boolean {
    ₹450/mo) and a paid period 365 days out, so QA can exercise the full
    logged-in flow without running Razorpay checkout every time.
    ============================================================ */
-export function seedTestAccount(): boolean {
+export async function seedTestAccount(): Promise<boolean> {
   if (process.env.NODE_ENV === "production") return false; // never in prod
   const password = process.env.SEED_TEST_USER_PASSWORD;
   if (!password) {
@@ -196,61 +210,57 @@ export function seedTestAccount(): boolean {
     return false;
   }
   const email = "hynexsbusiness@gmail.com";
-  if (one("SELECT id FROM users WHERE email = ?", email)) return false;
+  if (await one("users", { email })) return false;
 
   const ts = now();
   const workspaceId = uuid();
   const userId = uuid();
-  run("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, ?)", workspaceId, "HyNexs QA", ts);
-  run(
-    "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-    userId, email, "HyNexs QA", hashPassword(password), ts,
-  );
-  run(
-    "INSERT INTO memberships (user_id, workspace_id, role, initials, color, title, created_at) VALUES (?, ?, 'admin', 'HQ', '#E4570F', 'QA Admin', ?)",
-    userId, workspaceId, ts,
-  );
+  await insert("workspaces", { id: workspaceId, name: "HyNexs QA", created_at: ts });
+  await insert("users", { id: userId, email, name: "HyNexs QA", password_hash: hashPassword(password), created_at: ts });
+  await insert("memberships", {
+    user_id: userId,
+    workspace_id: workspaceId,
+    role: "admin",
+    initials: "HQ",
+    color: "#E4570F",
+    title: "QA Admin",
+    created_at: ts,
+  });
 
   // filler members (random unusable passwords) to push the quote to Team Plus
   const fillers = ["Asha Rao", "Kiran Patel", "Neel Shah", "Ravi Iyer"];
   for (const name of fillers) {
     const fid = uuid();
-    run(
-      "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-      fid,
-      name.toLowerCase().replace(/\s+/g, ".") + "@hysav.test",
+    await insert("users", {
+      id: fid,
+      email: name.toLowerCase().replace(/\s+/g, ".") + "@hysav.test",
       name,
-      hashPassword(randomUUID()), // random throwaway — these accounts are never logged into
-      ts,
-    );
-    run(
-      "INSERT INTO memberships (user_id, workspace_id, role, initials, color, title, created_at) VALUES (?, ?, 'member', ?, '#2B7DB8', 'QA member', ?)",
-      fid, workspaceId, name.split(" ").map((w) => w[0]).join(""), ts,
-    );
+      password_hash: hashPassword(randomUUID()), // random throwaway — never logged into
+      created_at: ts,
+    });
+    await insert("memberships", {
+      user_id: fid,
+      workspace_id: workspaceId,
+      role: "member",
+      initials: name.split(" ").map((w) => w[0]).join(""),
+      color: "#2B7DB8",
+      title: "QA member",
+      created_at: ts,
+    });
   }
 
   // pre-activated top-tier plan: paid for a year, no Razorpay ids (dev seed)
-  const memberTotal = 1 + fillers.length;
-  run(
-    `INSERT INTO payments (id, workspace_id, amount_paise, currency, status, period_start, period_end, created_at, updated_at)
-     VALUES (?, ?, ?, 'INR', 'paid', ?, ?, ?, ?)`,
-    uuid(),
-    workspaceId,
-    quoteForMembers(memberTotal).amountPaise,
-    ts,
-    new Date(Date.now() + 365 * DAY_MS).toISOString(),
-    ts,
-    ts,
-  );
+  await insert("payments", {
+    id: uuid(),
+    workspace_id: workspaceId,
+    amount_paise: quoteForMembers(1 + fillers.length).amountPaise,
+    currency: "INR",
+    status: "paid",
+    period_start: ts,
+    period_end: new Date(Date.now() + 365 * DAY_MS).toISOString(),
+    created_at: ts,
+    updated_at: ts,
+  });
   console.log(`[seed] QA test account '${email}' created (dev-only, Team Plus paid 365d)`);
   return true;
-}
-
-// Run directly: `npm run seed`
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, "/").split("/").at(-1)!)) {
-  const created = seedDemoWorkspace();
-  console.log(created ? "Seeded demo workspace 'Otterworks Inc.'" : "Demo workspace already exists — skipped.");
-  const counts = all<{ n: number }>("SELECT COUNT(*) AS n FROM usage_snapshots");
-  console.log(`usage_snapshots rows: ${counts[0].n}`);
-  db.close();
 }

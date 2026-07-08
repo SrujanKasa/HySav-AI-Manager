@@ -3,7 +3,7 @@
 // logged to the console and marked 'logged' (so local dev shows exactly what
 // would have been sent). Bodies never contain credentials.
 import { env } from "../env.ts";
-import { now, one, run, uuid } from "../db.ts";
+import { insert, now, one, update, uuid } from "../db.ts";
 
 interface SendArgs {
   workspaceId?: string | null;
@@ -17,26 +17,26 @@ interface SendArgs {
 
 export async function sendEmail(args: SendArgs): Promise<void> {
   if (args.dedupeKey) {
-    const dup = one("SELECT id FROM email_outbox WHERE dedupe_key = ?", args.dedupeKey);
+    const dup = await one("email_outbox", { dedupe_key: args.dedupeKey });
     if (dup) return;
   }
   const id = uuid();
-  run(
-    `INSERT INTO email_outbox (id, workspace_id, to_email, subject, body_text, kind, status, created_at, dedupe_key)
-     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+  await insert("email_outbox", {
     id,
-    args.workspaceId ?? null,
-    args.to,
-    args.subject,
-    args.text,
-    args.kind,
-    now(),
-    args.dedupeKey ?? null,
-  );
+    workspace_id: args.workspaceId ?? null,
+    to_email: args.to,
+    subject: args.subject,
+    body_text: args.text,
+    kind: args.kind,
+    status: "pending",
+    created_at: now(),
+    sent_at: null,
+    ...(args.dedupeKey ? { dedupe_key: args.dedupeKey } : {}),
+  });
 
   if (!env.resendApiKey) {
     console.log(`[email:logged] to=${args.to} subject="${args.subject}"`);
-    run("UPDATE email_outbox SET status = 'logged', sent_at = ? WHERE id = ?", now(), id);
+    await update("email_outbox", { id }, { status: "logged", sent_at: now() });
     return;
   }
 
@@ -49,15 +49,10 @@ export async function sendEmail(args: SendArgs): Promise<void> {
       },
       body: JSON.stringify({ from: env.emailFrom, to: [args.to], subject: args.subject, text: args.text }),
     });
-    run(
-      "UPDATE email_outbox SET status = ?, sent_at = ? WHERE id = ?",
-      res.ok ? "sent" : "failed",
-      now(),
-      id,
-    );
+    await update("email_outbox", { id }, { status: res.ok ? "sent" : "failed", sent_at: now() });
     if (!res.ok) console.error(`[email] Resend returned ${res.status} for outbox ${id}`);
   } catch (err) {
-    run("UPDATE email_outbox SET status = 'failed' WHERE id = ?", id);
+    await update("email_outbox", { id }, { status: "failed" });
     console.error(`[email] delivery error for outbox ${id}:`, (err as Error).message);
   }
 }

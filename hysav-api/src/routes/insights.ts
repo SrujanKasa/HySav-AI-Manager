@@ -18,25 +18,25 @@ export const demoRouter = Router();
 
 insightsRouter.use(requireAuth);
 
-insightsRouter.get("/workspaces/:id/insights", (req, res) => {
-  requireMembership(req, req.params.id);
-  res.json(buildInsights(req.params.id));
+insightsRouter.get("/workspaces/:id/insights", async (req, res) => {
+  await requireMembership(req, req.params.id);
+  res.json(await buildInsights(req.params.id));
 });
 
-insightsRouter.get("/workspaces/:id/dashboard", (req, res) => {
-  requireMembership(req, req.params.id);
-  res.json(buildDashboard(req.params.id));
+insightsRouter.get("/workspaces/:id/dashboard", async (req, res) => {
+  await requireMembership(req, req.params.id);
+  res.json(await buildDashboard(req.params.id));
 });
 
 // on-demand alert scan + digest (also run on a timer in index.ts)
 insightsRouter.post("/workspaces/:id/notifications/scan", async (req, res) => {
-  requireMembership(req, req.params.id, true);
+  await requireMembership(req, req.params.id, true);
   const report = await scanWorkspace(req.params.id, new Date().toISOString());
   res.json({ scanned: true, flags: report.flags.length });
 });
 
 insightsRouter.post("/workspaces/:id/notifications/digest", async (req, res) => {
-  requireMembership(req, req.params.id, true);
+  await requireMembership(req, req.params.id, true);
   await sendDigest(req.params.id, new Date().toISOString());
   res.json({ sent: true });
 });
@@ -44,20 +44,20 @@ insightsRouter.post("/workspaces/:id/notifications/digest", async (req, res) => 
 /* ---------- public, read-only demo dashboard ----------
    Serves the seeded "Otterworks" workspace so the marketing site's live demo
    runs on real backend data with real waste math — no auth, no writes. */
-demoRouter.get("/dashboard", (_req, res) => {
-  const ws = one<{ id: string }>("SELECT id FROM workspaces WHERE name = 'Otterworks Inc.'");
+demoRouter.get("/dashboard", async (_req, res) => {
+  const ws = await one<{ id: string }>("workspaces", { name: "Otterworks Inc." });
   if (!ws) throw new HttpError(503, "Demo workspace not seeded");
-  res.json(buildDashboard(ws.id));
+  res.json(await buildDashboard(ws.id));
 });
 
 /* ---------- shared builders ---------- */
 
-function buildInsights(workspaceId: string): {
+async function buildInsights(workspaceId: string): Promise<{
   report: { wastedCentsThisMonth: number; monthlySpendCents: number };
   tools: (ToolInsight & { name: string })[];
   flags: WasteReport["flags"];
-} {
-  const { tools, snapshotsByTool } = loadWorkspaceToolInputs(workspaceId);
+}> {
+  const { tools, snapshotsByTool } = await loadWorkspaceToolInputs(workspaceId);
   const report = buildWasteReport(tools, snapshotsByTool, new Date().toISOString());
   const nameById = new Map(tools.map((t) => [t.id, t.name]));
   return {
@@ -72,28 +72,24 @@ function buildInsights(workspaceId: string): {
   };
 }
 
-export function buildDashboard(workspaceId: string) {
-  const { tools, toolRows, snapshotsByTool } = loadWorkspaceToolInputs(workspaceId);
+export async function buildDashboard(workspaceId: string) {
+  const { tools, toolRows, snapshotsByTool } = await loadWorkspaceToolInputs(workspaceId);
   const report = buildWasteReport(tools, snapshotsByTool, new Date().toISOString());
   const insightByTool = new Map(report.tools.map((t) => [t.toolId, t]));
   const rowById = new Map(toolRows.map((r) => [r.id, r]));
 
-  const memberRows = all<{
-    user_id: string;
-    name: string;
-    initials: string;
-    color: string;
-    title: string;
-  }>(
-    `SELECT m.user_id, u.name, m.initials, m.color, m.title
-     FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ?`,
-    workspaceId,
-  );
-  const initialsByUser = new Map(memberRows.map((m) => [m.user_id, m.initials]));
+  const memberships = await all<{ user_id: string; initials: string; color: string; title: string }>("memberships", {
+    workspace_id: workspaceId,
+  });
+  const users = await all<{ id: string; name: string }>("users", {
+    id: { $in: memberships.map((m) => m.user_id) },
+  });
+  const initialsByUser = new Map(memberships.map((m) => [m.user_id, m.initials]));
 
   const members: Record<string, { name: string; role: string; color: string }> = {};
-  for (const m of memberRows) {
-    members[m.initials] = { name: m.name, role: m.title, color: m.color };
+  for (const m of memberships) {
+    const u = users.find((x) => x.id === m.user_id);
+    members[m.initials] = { name: u?.name ?? "", role: m.title, color: m.color };
   }
 
   const nowMs = Date.now();

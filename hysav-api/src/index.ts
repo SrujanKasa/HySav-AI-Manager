@@ -1,60 +1,10 @@
-// HySav API entrypoint. Serves /api/v1/* plus the static marketing site from
-// ../hysav-site, so `npm run dev` gives the whole product on one port.
-import express from "express";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+// Long-running server entrypoint (local dev / Render / any VM):
+// serves the app + runs the background jobs. The Vercel serverless entry
+// (api/[...path].ts at the repo root) imports the same app without this file.
+import { app } from "./app.ts";
 import { env } from "./env.ts";
 import { all } from "./db.ts";
-import { errorHandler } from "./middleware.ts";
-import { authRouter } from "./routes/auth.ts";
-import { invitesRouter, workspacesRouter } from "./routes/workspaces.ts";
-import { toolsRouter } from "./routes/tools.ts";
-import { integrationsRouter } from "./routes/integrations.ts";
-import { demoRouter, insightsRouter } from "./routes/insights.ts";
-import { billingRouter, rawBodies, webhookRouter } from "./routes/billing.ts";
-import { seedDemoWorkspace, seedTestAccount } from "./seed.ts";
 import { scanWorkspace, sendDigest } from "./services/alerts.ts";
-
-const app = express();
-app.disable("x-powered-by");
-app.use(
-  express.json({
-    limit: "1mb",
-    // keep the raw bytes around for Razorpay webhook HMAC verification
-    verify: (req, _res, buf) => {
-      rawBodies.set(req as express.Request, buf);
-    },
-  }),
-);
-app.use(express.text({ type: "text/csv", limit: "1mb" }));
-
-const here = dirname(fileURLToPath(import.meta.url));
-
-const api = express.Router();
-api.get("/health", (_req, res) => {
-  res.json({ ok: true, version: "v1" });
-});
-api.get("/openapi.yaml", (_req, res) => {
-  res.type("text/yaml").sendFile(join(here, "..", "openapi.yaml"));
-});
-api.use("/auth", authRouter);
-api.use("/workspaces", workspacesRouter);
-api.use("/invites", invitesRouter);
-api.use("/demo", demoRouter);
-api.use(webhookRouter); //      /billing/webhook (unauthenticated, HMAC-verified)
-api.use(billingRouter); //      /workspaces/:id/billing, order, verify
-api.use(toolsRouter); //        /workspaces/:id/tools, /tools/:id, usage, import
-api.use(integrationsRouter); // /workspaces/:id/integrations
-api.use(insightsRouter); //     /workspaces/:id/insights, /dashboard, notifications
-
-app.use("/api/v1", api);
-app.use(express.static(join(here, "..", "..", "hysav-site")));
-app.use(errorHandler);
-
-if (env.seedOnBoot) {
-  if (seedDemoWorkspace()) console.log("[seed] demo workspace 'Otterworks Inc.' created");
-  seedTestAccount(); // dev/test-only QA login; no-ops in production or without SEED_TEST_USER_PASSWORD
-}
 
 app.listen(env.port, () => {
   console.log(`HySav API + site on http://localhost:${env.port} (docs: /api/v1/openapi.yaml)`);
@@ -62,10 +12,11 @@ app.listen(env.port, () => {
 
 // Background jobs: hourly waste/renewal alert scan, daily digest attempt
 // (the digest dedupe key makes it effectively weekly per user). For a
-// single-process app a timer beats dragging in a job queue.
+// single-process app a timer beats dragging in a job queue. On Vercel these
+// don't run — use Vercel Cron hitting the /notifications endpoints instead.
 const HOUR = 3_600_000;
 async function scanAllWorkspaces(): Promise<void> {
-  for (const ws of all<{ id: string }>("SELECT id FROM workspaces")) {
+  for (const ws of await all<{ id: string }>("workspaces", {})) {
     try {
       await scanWorkspace(ws.id, new Date().toISOString());
     } catch (err) {
@@ -74,7 +25,7 @@ async function scanAllWorkspaces(): Promise<void> {
   }
 }
 async function digestAllWorkspaces(): Promise<void> {
-  for (const ws of all<{ id: string }>("SELECT id FROM workspaces")) {
+  for (const ws of await all<{ id: string }>("workspaces", {})) {
     try {
       await sendDigest(ws.id, new Date().toISOString());
     } catch (err) {

@@ -15,22 +15,29 @@ interface Recipient {
   weekly_digest: number;
 }
 
-function recipients(workspaceId: string): Recipient[] {
-  return all<Recipient>(
-    `SELECT u.id AS user_id, u.email, u.name,
-            COALESCE(p.waste_alerts, 1) AS waste_alerts,
-            COALESCE(p.renewal_alerts, 1) AS renewal_alerts,
-            COALESCE(p.weekly_digest, 1) AS weekly_digest
-     FROM memberships m
-     JOIN users u ON u.id = m.user_id
-     LEFT JOIN notification_prefs p ON p.user_id = m.user_id AND p.workspace_id = m.workspace_id
-     WHERE m.workspace_id = ?`,
-    workspaceId,
+async function recipients(workspaceId: string): Promise<Recipient[]> {
+  const memberships = await all<{ user_id: string }>("memberships", { workspace_id: workspaceId });
+  const userIds = memberships.map((m) => m.user_id);
+  const users = await all<{ id: string; email: string; name: string }>("users", { id: { $in: userIds } });
+  const prefs = await all<{ user_id: string; waste_alerts: number; renewal_alerts: number; weekly_digest: number }>(
+    "notification_prefs",
+    { workspace_id: workspaceId },
   );
+  return users.map((u) => {
+    const p = prefs.find((x) => x.user_id === u.id);
+    return {
+      user_id: u.id,
+      email: u.email,
+      name: u.name,
+      waste_alerts: p ? p.waste_alerts : 1,
+      renewal_alerts: p ? p.renewal_alerts : 1,
+      weekly_digest: p ? p.weekly_digest : 1,
+    };
+  });
 }
 
 export async function scanWorkspace(workspaceId: string, nowIso: string): Promise<WasteReport> {
-  const { tools, snapshotsByTool } = loadWorkspaceToolInputs(workspaceId);
+  const { tools, snapshotsByTool } = await loadWorkspaceToolInputs(workspaceId);
   const report = buildWasteReport(tools, snapshotsByTool, nowIso);
   const toolById = new Map(tools.map((t) => [t.id, t]));
   const month = nowIso.slice(0, 7); // one alert per tool+type per month
@@ -45,7 +52,7 @@ export async function scanWorkspace(workspaceId: string, nowIso: string): Promis
     const isRenewalAlert =
       daysToRenewal <= 7 && (flag.type === "low_usage" || flag.type === "expiring_credits");
 
-    for (const r of recipients(workspaceId)) {
+    for (const r of await recipients(workspaceId)) {
       if (isRenewalAlert && r.renewal_alerts) {
         await sendEmail({
           workspaceId,
@@ -71,7 +78,7 @@ export async function scanWorkspace(workspaceId: string, nowIso: string): Promis
 }
 
 export async function sendDigest(workspaceId: string, nowIso: string): Promise<void> {
-  const { tools, snapshotsByTool } = loadWorkspaceToolInputs(workspaceId);
+  const { tools, snapshotsByTool } = await loadWorkspaceToolInputs(workspaceId);
   const report = buildWasteReport(tools, snapshotsByTool, nowIso);
   const toolById = new Map(tools.map((t) => [t.id, t]));
   const spend = tools
@@ -90,7 +97,7 @@ export async function sendDigest(workspaceId: string, nowIso: string): Promise<v
     `Estimated waste: ${fmt(report.wastedCentsThisMonth)}\n\n` +
     (lines.length ? `Where it's going:\n${lines.join("\n")}` : "No waste flags this week. Enjoy it.");
 
-  for (const r of recipients(workspaceId)) {
+  for (const r of await recipients(workspaceId)) {
     if (!r.weekly_digest) continue;
     await sendEmail({
       workspaceId,

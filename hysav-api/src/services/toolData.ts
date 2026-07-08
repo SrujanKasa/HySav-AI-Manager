@@ -1,5 +1,5 @@
 // Loads tools + snapshots for a workspace in the plain shapes the waste
-// engine consumes. The only bridge between SQL rows and the pure logic.
+// engine consumes. The only bridge between MongoDB documents and pure logic.
 import { all } from "../db.ts";
 import type { SnapshotInput, ToolInput } from "./waste.ts";
 
@@ -24,23 +24,20 @@ export interface ToolRow {
   updated_at: string;
 }
 
-export function loadWorkspaceToolInputs(workspaceId: string): {
+export async function loadWorkspaceToolInputs(workspaceId: string): Promise<{
   tools: ToolInput[];
   toolRows: ToolRow[];
   snapshotsByTool: Map<string, SnapshotInput[]>;
-} {
-  const toolRows = all<ToolRow>("SELECT * FROM tools WHERE workspace_id = ? ORDER BY cost_cents DESC", workspaceId);
-  const members = all<{ tool_id: string; user_id: string; last_active_at: string | null }>(
-    `SELECT tm.tool_id, tm.user_id, tm.last_active_at
-     FROM tool_members tm JOIN tools t ON t.id = tm.tool_id
-     WHERE t.workspace_id = ?`,
-    workspaceId,
-  );
-  const snaps = all<{ tool_id: string; captured_at: string; used_amount: number; limit_amount: number | null }>(
-    `SELECT s.tool_id, s.captured_at, s.used_amount, s.limit_amount
-     FROM usage_snapshots s JOIN tools t ON t.id = s.tool_id
-     WHERE t.workspace_id = ? ORDER BY s.captured_at ASC`,
-    workspaceId,
+}> {
+  const toolRows = await all<ToolRow>("tools", { workspace_id: workspaceId }, { sort: { cost_cents: -1 } });
+  const toolIds = toolRows.map((t) => t.id);
+  const members = await all<{ tool_id: string; user_id: string; last_active_at: string | null }>("tool_members", {
+    tool_id: { $in: toolIds },
+  });
+  const snaps = await all<{ tool_id: string; captured_at: string; used_amount: number; limit_amount: number | null }>(
+    "usage_snapshots",
+    { tool_id: { $in: toolIds } },
+    { sort: { captured_at: 1 } },
   );
 
   const membersByTool = new Map<string, { userId: string; lastActiveAt: string | null }[]>();

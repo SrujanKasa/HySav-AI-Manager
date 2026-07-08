@@ -33,29 +33,26 @@ export function currentUser(req: Request): AuthedUser {
   return u;
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) throw new HttpError(401, "Authentication required");
-  const session = one<{ user_id: string; expires_at: string }>(
-    "SELECT user_id, expires_at FROM sessions WHERE token_hash = ?",
-    hashToken(token),
-  );
+  const session = await one<{ user_id: string; expires_at: string }>("sessions", { token_hash: hashToken(token) });
   if (!session || session.expires_at < now()) throw new HttpError(401, "Session expired or invalid");
-  const user = one<AuthedUser>("SELECT id, email, name FROM users WHERE id = ?", session.user_id);
+  const user = await one<AuthedUser & { password_hash?: string }>("users", { id: session.user_id });
   if (!user) throw new HttpError(401, "Session expired or invalid");
-  authedUsers.set(req, user);
+  authedUsers.set(req, { id: user.id, email: user.email, name: user.name });
   next();
 }
 
 /** Asserts membership (optionally admin) and returns the role. */
-export function requireMembership(req: Request, workspaceId: string, adminOnly = false): "admin" | "member" {
+export async function requireMembership(
+  req: Request,
+  workspaceId: string,
+  adminOnly = false,
+): Promise<"admin" | "member"> {
   const user = currentUser(req);
-  const m = one<{ role: "admin" | "member" }>(
-    "SELECT role FROM memberships WHERE user_id = ? AND workspace_id = ?",
-    user.id,
-    workspaceId,
-  );
+  const m = await one<{ role: "admin" | "member" }>("memberships", { user_id: user.id, workspace_id: workspaceId });
   if (!m) throw new HttpError(404, "Workspace not found");
   if (adminOnly && m.role !== "admin") throw new HttpError(403, "Admin role required");
   return m.role;

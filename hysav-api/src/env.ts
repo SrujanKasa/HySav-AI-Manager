@@ -26,7 +26,9 @@ const isTest = process.env.NODE_ENV === "test" || process.env.VITEST !== undefin
 
 export const env = {
   port: Number(process.env.PORT ?? 3000),
-  databasePath: process.env.DATABASE_PATH ?? "./data/hysav.db",
+  // MongoDB Atlas connection string (mongodb+srv://...). Unset locally ⇒ an
+  // embedded dev mongod is used instead (see db.ts).
+  mongodbUri: process.env.MONGODB_URI || null,
   baseUrl: process.env.BASE_URL ?? "http://localhost:3000",
   emailFrom: process.env.EMAIL_FROM ?? "HySav <alerts@hysav.local>",
   resendApiKey: process.env.RESEND_API_KEY || null,

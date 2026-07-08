@@ -1,0 +1,20 @@
+{
+  "name": "hysav",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HySav | AI Monit — static site (hysav-site) + API (hysav-api, also deployed as Vercel functions from api/)",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node hysav-api/src/index.ts",
+    "test": "npm --prefix hysav-api test",
+    "typecheck": "npm --prefix hysav-api run typecheck"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "mongodb": "^6.12.0",
+    "zod": "^3.24.1"
+  }
+}

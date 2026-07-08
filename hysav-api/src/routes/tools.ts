@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { all, now, one, run, uuid } from "../db.ts";
+import { all, insert, now, one, remove, update, uuid } from "../db.ts";
 import { HttpError, currentUser, parseBody, requireAuth, requireMembership } from "../middleware.ts";
 import type { ToolRow } from "../services/toolData.ts";
 
@@ -45,87 +45,90 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "tool";
 }
 
-function getToolChecked(req: Parameters<typeof requireMembership>[0], toolId: string, adminOnly = false): ToolRow {
-  const tool = one<ToolRow>("SELECT * FROM tools WHERE id = ?", toolId);
+async function getToolChecked(
+  req: Parameters<typeof requireMembership>[0],
+  toolId: string,
+  adminOnly = false,
+): Promise<ToolRow> {
+  const tool = await one<ToolRow>("tools", { id: toolId });
   if (!tool) throw new HttpError(404, "Tool not found");
-  requireMembership(req, tool.workspace_id, adminOnly);
+  await requireMembership(req, tool.workspace_id, adminOnly);
   return tool;
 }
 
-function setToolMembers(toolId: string, workspaceId: string, memberIds: string[]): void {
-  run("DELETE FROM tool_members WHERE tool_id = ?", toolId);
+async function setToolMembers(toolId: string, workspaceId: string, memberIds: string[]): Promise<void> {
+  await remove("tool_members", { tool_id: toolId });
   for (const userId of new Set(memberIds)) {
-    const m = one("SELECT 1 AS x FROM memberships WHERE user_id = ? AND workspace_id = ?", userId, workspaceId);
+    const m = await one("memberships", { user_id: userId, workspace_id: workspaceId });
     if (!m) throw new HttpError(400, `User ${userId} is not a member of this workspace`);
-    run("INSERT INTO tool_members (tool_id, user_id, is_owner, last_active_at) VALUES (?, ?, 0, ?)", toolId, userId, now());
+    await insert("tool_members", { tool_id: toolId, user_id: userId, is_owner: 0, last_active_at: now() });
   }
 }
 
 /* ---------- CRUD ---------- */
 
-toolsRouter.get("/workspaces/:id/tools", (req, res) => {
-  requireMembership(req, req.params.id);
-  const tools = all<ToolRow>("SELECT * FROM tools WHERE workspace_id = ? ORDER BY cost_cents DESC", req.params.id);
-  const members = all<{ tool_id: string; user_id: string; last_active_at: string | null }>(
-    `SELECT tm.tool_id, tm.user_id, tm.last_active_at FROM tool_members tm
-     JOIN tools t ON t.id = tm.tool_id WHERE t.workspace_id = ?`,
-    req.params.id,
-  );
+toolsRouter.get("/workspaces/:id/tools", async (req, res) => {
+  await requireMembership(req, req.params.id);
+  const tools = await all<ToolRow>("tools", { workspace_id: req.params.id }, { sort: { cost_cents: -1 } });
+  const members = await all<{ tool_id: string; user_id: string; last_active_at: string | null }>("tool_members", {
+    tool_id: { $in: tools.map((t) => t.id) },
+  });
   res.json(
     tools.map((t) => ({
       ...serializeTool(t),
-      members: members.filter((m) => m.tool_id === t.id).map((m) => ({ userId: m.user_id, lastActiveAt: m.last_active_at })),
+      members: members
+        .filter((m) => m.tool_id === t.id)
+        .map((m) => ({ userId: m.user_id, lastActiveAt: m.last_active_at })),
     })),
   );
 });
 
-toolsRouter.post("/workspaces/:id/tools", (req, res) => {
-  requireMembership(req, req.params.id, true);
+toolsRouter.post("/workspaces/:id/tools", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
   const body = parseBody(toolSchema, req.body);
   const id = uuid();
   const ts = now();
-  run(
-    `INSERT INTO tools (id, workspace_id, name, slug, category, icon, plan, status, cost_cents, billing_cycle,
-                        renewal_date, credit_limit, credit_unit, usage_source, note, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  await insert("tools", {
     id,
-    req.params.id,
-    body.name,
-    body.slug ?? slugify(body.name),
-    body.category,
-    body.icon ?? null,
-    body.plan,
-    body.status,
-    body.costCents,
-    body.billingCycle,
-    body.renewalDate,
-    body.creditLimit ?? null,
-    body.creditUnit ?? null,
-    body.usageSource,
-    body.note ?? null,
-    ts,
-    ts,
-  );
-  setToolMembers(id, req.params.id, body.memberIds);
-  res.status(201).json(serializeTool(one<ToolRow>("SELECT * FROM tools WHERE id = ?", id)!));
+    workspace_id: req.params.id,
+    name: body.name,
+    slug: body.slug ?? slugify(body.name),
+    category: body.category,
+    icon: body.icon ?? null,
+    plan: body.plan,
+    status: body.status,
+    cost_cents: body.costCents,
+    billing_cycle: body.billingCycle,
+    renewal_date: body.renewalDate,
+    credit_limit: body.creditLimit ?? null,
+    credit_unit: body.creditUnit ?? null,
+    usage_source: body.usageSource,
+    note: body.note ?? null,
+    last_usage_update_at: null,
+    created_at: ts,
+    updated_at: ts,
+  });
+  await setToolMembers(id, req.params.id, body.memberIds);
+  res.status(201).json(serializeTool((await one<ToolRow>("tools", { id }))!));
 });
 
-toolsRouter.get("/tools/:id", (req, res) => {
-  const tool = getToolChecked(req, req.params.id);
-  const members = all(
-    "SELECT user_id AS userId, last_active_at AS lastActiveAt FROM tool_members WHERE tool_id = ?",
-    tool.id,
+toolsRouter.get("/tools/:id", async (req, res) => {
+  const tool = await getToolChecked(req, req.params.id);
+  const members = (await all<{ user_id: string; last_active_at: string | null }>("tool_members", { tool_id: tool.id })).map(
+    (m) => ({ userId: m.user_id, lastActiveAt: m.last_active_at }),
   );
-  const snapshots = all(
-    `SELECT captured_at AS capturedAt, used_amount AS used, limit_amount AS "limit", source
-     FROM usage_snapshots WHERE tool_id = ? ORDER BY captured_at ASC`,
-    tool.id,
-  );
+  const snapshots = (
+    await all<{ captured_at: string; used_amount: number; limit_amount: number | null; source: string }>(
+      "usage_snapshots",
+      { tool_id: tool.id },
+      { sort: { captured_at: 1 } },
+    )
+  ).map((s) => ({ capturedAt: s.captured_at, used: s.used_amount, limit: s.limit_amount, source: s.source }));
   res.json({ ...serializeTool(tool), members, snapshots });
 });
 
-toolsRouter.patch("/tools/:id", (req, res) => {
-  const tool = getToolChecked(req, req.params.id, true);
+toolsRouter.patch("/tools/:id", async (req, res) => {
+  const tool = await getToolChecked(req, req.params.id, true);
   const body = parseBody(toolSchema.partial(), req.body);
   const merged = {
     name: body.name ?? tool.name,
@@ -134,42 +137,25 @@ toolsRouter.patch("/tools/:id", (req, res) => {
     icon: body.icon === undefined ? tool.icon : body.icon,
     plan: body.plan ?? tool.plan,
     status: body.status ?? tool.status,
-    costCents: body.costCents ?? tool.cost_cents,
-    billingCycle: body.billingCycle ?? tool.billing_cycle,
-    renewalDate: body.renewalDate ?? tool.renewal_date,
-    creditLimit: body.creditLimit === undefined ? tool.credit_limit : body.creditLimit,
-    creditUnit: body.creditUnit === undefined ? tool.credit_unit : body.creditUnit,
-    usageSource: body.usageSource ?? tool.usage_source,
+    cost_cents: body.costCents ?? tool.cost_cents,
+    billing_cycle: body.billingCycle ?? tool.billing_cycle,
+    renewal_date: body.renewalDate ?? tool.renewal_date,
+    credit_limit: body.creditLimit === undefined ? tool.credit_limit : body.creditLimit,
+    credit_unit: body.creditUnit === undefined ? tool.credit_unit : body.creditUnit,
+    usage_source: body.usageSource ?? tool.usage_source,
     note: body.note === undefined ? tool.note : body.note,
+    updated_at: now(),
   };
-  run(
-    `UPDATE tools SET name=?, slug=?, category=?, icon=?, plan=?, status=?, cost_cents=?, billing_cycle=?,
-       renewal_date=?, credit_limit=?, credit_unit=?, usage_source=?, note=?, updated_at=? WHERE id=?`,
-    merged.name,
-    merged.slug,
-    merged.category,
-    merged.icon,
-    merged.plan,
-    merged.status,
-    merged.costCents,
-    merged.billingCycle,
-    merged.renewalDate,
-    merged.creditLimit,
-    merged.creditUnit,
-    merged.usageSource,
-    merged.note,
-    now(),
-    tool.id,
-  );
-  if (body.memberIds) setToolMembers(tool.id, tool.workspace_id, body.memberIds);
-  res.json(serializeTool(one<ToolRow>("SELECT * FROM tools WHERE id = ?", tool.id)!));
+  await update("tools", { id: tool.id }, merged);
+  if (body.memberIds) await setToolMembers(tool.id, tool.workspace_id, body.memberIds);
+  res.json(serializeTool((await one<ToolRow>("tools", { id: tool.id }))!));
 });
 
-toolsRouter.delete("/tools/:id", (req, res) => {
-  const tool = getToolChecked(req, req.params.id, true);
-  run("DELETE FROM usage_snapshots WHERE tool_id = ?", tool.id);
-  run("DELETE FROM tool_members WHERE tool_id = ?", tool.id);
-  run("DELETE FROM tools WHERE id = ?", tool.id);
+toolsRouter.delete("/tools/:id", async (req, res) => {
+  const tool = await getToolChecked(req, req.params.id, true);
+  await remove("usage_snapshots", { tool_id: tool.id });
+  await remove("tool_members", { tool_id: tool.id });
+  await remove("tools", { id: tool.id });
   res.status(204).end();
 });
 
@@ -181,23 +167,22 @@ const usageSchema = z.object({
   capturedAt: z.string().datetime().optional(),
 });
 
-toolsRouter.post("/tools/:id/usage", (req, res) => {
-  const tool = getToolChecked(req, req.params.id); // members may report usage
+toolsRouter.post("/tools/:id/usage", async (req, res) => {
+  const tool = await getToolChecked(req, req.params.id); // members may report usage
   const body = parseBody(usageSchema, req.body);
   const ts = body.capturedAt ?? now();
-  run(
-    `INSERT INTO usage_snapshots (id, tool_id, captured_at, used_amount, limit_amount, source)
-     VALUES (?, ?, ?, ?, ?, 'manual')`,
-    uuid(),
-    tool.id,
-    ts,
-    body.used,
-    body.limit ?? tool.credit_limit,
-  );
-  run("UPDATE tools SET last_usage_update_at = ?, updated_at = ? WHERE id = ?", ts, now(), tool.id);
+  await insert("usage_snapshots", {
+    id: uuid(),
+    tool_id: tool.id,
+    captured_at: ts,
+    used_amount: body.used,
+    limit_amount: body.limit ?? tool.credit_limit,
+    source: "manual",
+  });
+  await update("tools", { id: tool.id }, { last_usage_update_at: ts, updated_at: now() });
   // reporting usage also marks the reporter's seat active
   const user = currentUser(req);
-  run("UPDATE tool_members SET last_active_at = ? WHERE tool_id = ? AND user_id = ?", ts, tool.id, user.id);
+  await update("tool_members", { tool_id: tool.id, user_id: user.id }, { last_active_at: ts });
   res.status(201).json({ ok: true });
 });
 
@@ -236,8 +221,12 @@ export function parseCsv(text: string): Record<string, string>[] {
   });
 }
 
-toolsRouter.post("/workspaces/:id/tools/import", (req, res) => {
-  requireMembership(req, req.params.id, true);
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+toolsRouter.post("/workspaces/:id/tools/import", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
   const csv = typeof req.body === "string" ? req.body : (req.body?.csv as string | undefined);
   if (!csv || typeof csv !== "string" || csv.length > 1_000_000) {
     throw new HttpError(400, "Send CSV text (as text/csv body or JSON {\"csv\": ...}), max 1MB");
@@ -253,11 +242,10 @@ toolsRouter.post("/workspaces/:id/tools/import", (req, res) => {
       results.push({ name: "(blank)", action: "skipped", reason: "missing name" });
       continue;
     }
-    let tool = one<ToolRow>(
-      "SELECT * FROM tools WHERE workspace_id = ? AND LOWER(name) = LOWER(?)",
-      req.params.id,
-      name,
-    );
+    let tool = await one<ToolRow>("tools", {
+      workspace_id: req.params.id,
+      name: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
+    });
     if (!tool) {
       const category = (CATEGORIES as readonly string[]).includes(row.category) ? row.category : "other";
       const costCents = Math.round(Number(row.cost || 0) * 100);
@@ -270,41 +258,41 @@ toolsRouter.post("/workspaces/:id/tools/import", (req, res) => {
         continue;
       }
       const id = uuid();
-      run(
-        `INSERT INTO tools (id, workspace_id, name, slug, category, plan, status, cost_cents, billing_cycle,
-           renewal_date, credit_limit, credit_unit, usage_source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
+      await insert("tools", {
         id,
-        req.params.id,
+        workspace_id: req.params.id,
         name,
-        slugify(name),
+        slug: slugify(name),
         category,
-        row.plan ?? "",
-        ["active", "trial", "cancelled"].includes(row.status) ? row.status : "active",
-        costCents,
-        cycle,
-        renewal,
-        row.credit_limit ? Number(row.credit_limit) : null,
-        row.credit_unit || null,
-        ts,
-        ts,
-      );
-      tool = one<ToolRow>("SELECT * FROM tools WHERE id = ?", id)!;
+        icon: null,
+        plan: row.plan ?? "",
+        status: ["active", "trial", "cancelled"].includes(row.status) ? row.status : "active",
+        cost_cents: costCents,
+        billing_cycle: cycle,
+        renewal_date: renewal,
+        credit_limit: row.credit_limit ? Number(row.credit_limit) : null,
+        credit_unit: row.credit_unit || null,
+        usage_source: "manual",
+        note: null,
+        last_usage_update_at: null,
+        created_at: ts,
+        updated_at: ts,
+      });
+      tool = (await one<ToolRow>("tools", { id }))!;
       results.push({ name, action: "created" });
     }
     if (row.used !== undefined && row.used !== "") {
       const used = Number(row.used);
       if (Number.isFinite(used) && used >= 0) {
-        run(
-          `INSERT INTO usage_snapshots (id, tool_id, captured_at, used_amount, limit_amount, source)
-           VALUES (?, ?, ?, ?, ?, 'csv')`,
-          uuid(),
-          tool.id,
-          ts,
-          used,
-          tool.credit_limit,
-        );
-        run("UPDATE tools SET last_usage_update_at = ? WHERE id = ?", ts, tool.id);
+        await insert("usage_snapshots", {
+          id: uuid(),
+          tool_id: tool.id,
+          captured_at: ts,
+          used_amount: used,
+          limit_amount: tool.credit_limit,
+          source: "csv",
+        });
+        await update("tools", { id: tool.id }, { last_usage_update_at: ts });
         if (results.at(-1)?.name !== name) results.push({ name, action: "usage_recorded" });
       }
     }

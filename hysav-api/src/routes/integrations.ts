@@ -4,7 +4,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { decryptSecret, encryptSecret } from "../crypto.ts";
-import { all, now, one, run, uuid } from "../db.ts";
+import { all, insert, now, one, remove, update, uuid } from "../db.ts";
 import { HttpError, currentUser, parseBody, requireAuth, requireMembership } from "../middleware.ts";
 import { providers } from "../providers/index.ts";
 import type { ToolRow } from "../services/toolData.ts";
@@ -12,11 +12,11 @@ import type { ToolRow } from "../services/toolData.ts";
 export const integrationsRouter = Router();
 integrationsRouter.use(requireAuth);
 
-integrationsRouter.get("/workspaces/:id/integrations", (req, res) => {
-  requireMembership(req, req.params.id);
-  const rows = all<{ id: string; provider: string; key_last4: string; created_at: string; last_synced_at: string | null }>(
-    "SELECT id, provider, key_last4, created_at, last_synced_at FROM integration_credentials WHERE workspace_id = ?",
-    req.params.id,
+integrationsRouter.get("/workspaces/:id/integrations", async (req, res) => {
+  await requireMembership(req, req.params.id);
+  const rows = await all<{ id: string; provider: string; key_last4: string; created_at: string; last_synced_at: string | null }>(
+    "integration_credentials",
+    { workspace_id: req.params.id },
   );
   res.json({
     // what's connectable and what's honestly just a stub
@@ -41,64 +41,59 @@ const connectSchema = z.object({
   apiKey: z.string().min(8).max(500),
 });
 
-integrationsRouter.post("/workspaces/:id/integrations", (req, res) => {
-  requireMembership(req, req.params.id, true);
+integrationsRouter.post("/workspaces/:id/integrations", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
   const user = currentUser(req);
   const body = parseBody(connectSchema, req.body);
   const p = providers[body.provider];
   if (!p.supportsLiveSync) {
     throw new HttpError(400, `${p.displayName}: ${p.integrationStatus}`);
   }
-  const id = uuid();
-  run(
-    `INSERT INTO integration_credentials (id, workspace_id, provider, key_ciphertext, key_last4, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (workspace_id, provider) DO UPDATE SET
-       key_ciphertext = excluded.key_ciphertext, key_last4 = excluded.key_last4,
-       created_by = excluded.created_by, created_at = excluded.created_at`,
-    id,
-    req.params.id,
-    body.provider,
-    encryptSecret(body.apiKey),
-    body.apiKey.slice(-4),
-    user.id,
-    now(),
+  await update(
+    "integration_credentials",
+    { workspace_id: req.params.id, provider: body.provider },
+    {
+      id: uuid(),
+      workspace_id: req.params.id,
+      provider: body.provider,
+      key_ciphertext: encryptSecret(body.apiKey),
+      key_last4: body.apiKey.slice(-4),
+      created_by: user.id,
+      created_at: now(),
+      last_synced_at: null,
+    },
+    true, // upsert — reconnecting replaces the stored key
   );
   res.status(201).json({ provider: body.provider, keyLast4: body.apiKey.slice(-4) });
 });
 
-integrationsRouter.delete("/workspaces/:id/integrations/:provider", (req, res) => {
-  requireMembership(req, req.params.id, true);
-  run(
-    "DELETE FROM integration_credentials WHERE workspace_id = ? AND provider = ?",
-    req.params.id,
-    req.params.provider,
-  );
+integrationsRouter.delete("/workspaces/:id/integrations/:provider", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
+  await remove("integration_credentials", { workspace_id: req.params.id, provider: req.params.provider });
   res.status(204).end();
 });
 
 /** Pull fresh usage from the provider API for every tool in the workspace
  *  whose usage_source matches. The reading lands in usage_snapshots exactly
- *  like a manual entry would — same table, same downstream logic. */
+ *  like a manual entry would — same collection, same downstream logic. */
 integrationsRouter.post("/workspaces/:id/integrations/:provider/sync", async (req, res) => {
-  requireMembership(req, req.params.id, true);
+  await requireMembership(req, req.params.id, true);
   const providerId = req.params.provider;
   const p = providers[providerId];
   if (!p) throw new HttpError(404, "Unknown provider");
   if (!p.supportsLiveSync || !p.sync) throw new HttpError(400, `${p.displayName}: ${p.integrationStatus}`);
 
-  const cred = one<{ key_ciphertext: string }>(
-    "SELECT key_ciphertext FROM integration_credentials WHERE workspace_id = ? AND provider = ?",
-    req.params.id,
-    providerId,
-  );
+  const cred = await one<{ key_ciphertext: string }>("integration_credentials", {
+    workspace_id: req.params.id,
+    provider: providerId,
+  });
   if (!cred) throw new HttpError(400, `No ${p.displayName} credential connected for this workspace`);
 
-  const tools = all<ToolRow>(
-    "SELECT * FROM tools WHERE workspace_id = ? AND usage_source = ? AND status != 'cancelled'",
-    req.params.id,
-    providerId,
-  );
+  const tools = await all<ToolRow>("tools", {
+    workspace_id: req.params.id,
+    usage_source: providerId,
+    status: { $ne: "cancelled" },
+  });
   if (tools.length === 0) {
     throw new HttpError(400, `No tools in this workspace have usage_source='${providerId}'`);
   }
@@ -116,23 +111,25 @@ integrationsRouter.post("/workspaces/:id/integrations/:provider/sync", async (re
           renewalDate: tool.renewal_date,
         },
       });
-      run(
-        `INSERT INTO usage_snapshots (id, tool_id, captured_at, used_amount, limit_amount, source)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        uuid(),
-        tool.id,
-        reading.capturedAt,
-        reading.used,
-        reading.limit,
-        providerId,
-      );
-      run("UPDATE tools SET last_usage_update_at = ?, updated_at = ? WHERE id = ?", reading.capturedAt, now(), tool.id);
+      await insert("usage_snapshots", {
+        id: uuid(),
+        tool_id: tool.id,
+        captured_at: reading.capturedAt,
+        used_amount: reading.used,
+        limit_amount: reading.limit,
+        source: providerId,
+      });
+      await update("tools", { id: tool.id }, { last_usage_update_at: reading.capturedAt, updated_at: now() });
       results.push({ toolId: tool.id, name: tool.name, ok: true, used: reading.used });
     } catch (err) {
       // provider errors surface per-tool; the message never includes the key
       results.push({ toolId: tool.id, name: tool.name, ok: false, error: (err as Error).message });
     }
   }
-  run("UPDATE integration_credentials SET last_synced_at = ? WHERE workspace_id = ? AND provider = ?", now(), req.params.id, providerId);
+  await update(
+    "integration_credentials",
+    { workspace_id: req.params.id, provider: providerId },
+    { last_synced_at: now() },
+  );
   res.json({ synced: results });
 });

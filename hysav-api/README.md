@@ -1,40 +1,47 @@
 # hysav-api — HySav | AI Monit backend
 
 Node 22.13+ / TypeScript / Express REST API for tracking AI-tool subscriptions,
-monitoring credit burn, and detecting wasted spend. Serves the static marketing
-site (`../hysav-site`) too, so one process runs the whole product.
+monitoring credit burn, and detecting wasted spend. Runs two ways:
+
+- **Local / long-running host**: `npm run dev` serves the API **and** the
+  static marketing site (`../hysav-site`) on one port, with background jobs.
+- **Vercel serverless**: `api/[...path].ts` at the repo root wraps the same
+  Express app; the static site is served by Vercel's CDN alongside it.
 
 ## Run
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000 — site + API, auto-seeds demo data
-npm test           # waste-engine tests (vitest)
+npm test           # waste-engine + billing tests (vitest)
 npm run typecheck
 ```
 
-No database server needed: uses Node's built-in SQLite (`node:sqlite`), file at
-`./data/hysav.db`. Config via env vars — see `.env.example`. A `.env` file in
-this folder is picked up automatically.
+**Database: MongoDB.** Set `MONGODB_URI` (MongoDB Atlas) in production — it's
+required there. Locally, leave it unset and an embedded dev MongoDB
+(`mongodb-memory-server`) starts automatically (first boot downloads the
+mongod binary), persisted under `./data/mongo`. Config via env vars — see
+`.env.example`; a `.env` file in this folder is picked up automatically.
 
 **Demo login** (seeded): `maya@otterworks.dev` / `otterworks-demo!` — admin of
 the "Otterworks Inc." workspace that powers the public demo dashboard.
 
-## Why SQLite (and the Postgres path)
+## Collections
 
-Postgres is the right production default, but this machine has neither
-Postgres nor Docker, and a backend that can't run locally can't be verified.
-So: `node:sqlite` for zero-infra dev, with the schema (`src/schema.sql`)
-written in portable ANSI SQL — TEXT uuids, ISO timestamps, integer cents,
-CHECK-constraint enums. Migrating to Neon/Vercel Postgres = swap `src/db.ts`
-for a `pg` pool and run the same schema. No model changes.
+`users`, `workspaces`, `memberships`, `invites`, `sessions`, `tools`,
+`tool_members`, `usage_snapshots`, `integration_credentials`,
+`notification_prefs`, `email_outbox`, `payments` — snake_case fields, `id`
+uuid strings, ISO-8601 timestamps, integer cents/paise for money. Unique
+indexes on emails, session/invite token hashes, membership pairs, and
+Razorpay order/subscription ids (created automatically on connect).
 
 ## Layout
 
 ```
-src/index.ts            app bootstrap, static site, background jobs
-src/schema.sql          full relational schema (portable SQL)
-src/db.ts               the only DB touchpoint (node:sqlite)
+src/app.ts              the Express app (shared by both runtimes) + lazy seed
+src/index.ts            long-running entrypoint: listen + background jobs
+../api/[...path].ts     Vercel serverless entrypoint (same app)
+src/db.ts               the only DB touchpoint (MongoDB driver / embedded dev mongod)
 src/crypto.ts           scrypt passwords, token hashing, AES-256-GCM secrets
 src/middleware.ts       bearer auth, rate limiting, zod validation, errors
 src/routes/             auth, workspaces+invites+prefs, tools+usage+CSV,
