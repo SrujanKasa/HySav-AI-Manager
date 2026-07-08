@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Log in</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <nav class="nav-links">
+      <a href="pricing.html">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="signup.html">Sign up</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <form class="auth-wrap" id="login-form" novalidate>
+    <h2>Welcome back</h2>
+    <p class="auth-sub">Log in to see what your AI stack is really costing.</p>
+
+    <label for="li-email">Email</label>
+    <input type="email" id="li-email" autocomplete="email" placeholder="you@company.com" required />
+
+    <label for="li-password">Password</label>
+    <input type="password" id="li-password" autocomplete="current-password" placeholder="••••••••••" required />
+
+    <div class="auth-err" id="li-err" role="alert"></div>
+    <button class="btn btn-primary" type="submit" id="li-submit">Log in</button>
+    <p class="auth-alt">New here? <a href="signup.html">Create a workspace</a> — 3-day free trial of everything.</p>
+  </form>
+</main>
+
+<script src="auth.js"></script>
+<script>
+(function () {
+  if (HySav.token()) { window.location.href = "account.html"; return; }
+  var form = document.getElementById("login-form");
+  var err = document.getElementById("li-err");
+  var btn = document.getElementById("li-submit");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    err.classList.remove("show");
+    btn.disabled = true;
+    btn.textContent = "Logging in…";
+    HySav.api("/auth/login", {
+      method: "POST",
+      body: {
+        email: document.getElementById("li-email").value.trim(),
+        password: document.getElementById("li-password").value
+      }
+    }).then(function (data) {
+      HySav.setToken(data.token);
+      window.location.href = "account.html";
+    }).catch(function (e2) {
+      err.textContent = e2.message;
+      err.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Log in";
+    });
+  });
+})();
+</script>
+</body>
+</html>

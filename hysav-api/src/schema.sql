@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id                  TEXT PRIMARY KEY,
   workspace_id        TEXT NOT NULL REFERENCES workspaces(id),
   razorpay_order_id   TEXT UNIQUE,
+  razorpay_subscription_id TEXT UNIQUE,
   razorpay_payment_id TEXT,
   amount_paise        INTEGER NOT NULL,
   currency            TEXT NOT NULL DEFAULT 'INR',

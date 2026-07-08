@@ -3,6 +3,16 @@
 // Lucide icons
 if (window.lucide) { window.lucide.createIcons(); }
 
+// Auth-aware nav link (requires auth.js loaded first; degrades if absent)
+(function () {
+  var nav = document.querySelector(".nav-links");
+  if (!nav || typeof HySav === "undefined") return;
+  var a = document.createElement("a");
+  if (HySav.token()) { a.href = "account.html"; a.textContent = "Account"; }
+  else { a.href = "login.html"; a.textContent = "Log in"; }
+  nav.insertBefore(a, nav.querySelector(".btn"));
+})();
+
 // Reveal-on-scroll
 (function () {
   var els = document.querySelectorAll(".rv");

@@ -23,6 +23,14 @@ db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA foreign_keys = ON");
 db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
 
+// Lightweight migrations for DBs created before a column existed (schema.sql
+// only covers fresh databases — CREATE TABLE IF NOT EXISTS won't alter).
+try {
+  db.exec("ALTER TABLE payments ADD COLUMN razorpay_subscription_id TEXT");
+} catch {
+  /* column already exists */
+}
+
 export function uuid(): string {
   return randomUUID();
 }

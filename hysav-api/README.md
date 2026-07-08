@@ -72,11 +72,26 @@ Endpoints exist and are tested now; they return an honest 503 until you set
 `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`
 (test-mode `rzp_test_...` keys work as-is):
 
-1. `GET  /workspaces/:id/billing` — quote + paid-until status
-2. `POST /workspaces/:id/billing/order` — creates the Razorpay order; frontend
-   opens Checkout with the returned `orderId` + publishable `keyId`
-3. `POST /workspaces/:id/billing/verify` — checkout success handler → HMAC check → plan active
-4. `POST /billing/webhook` — server-to-server confirmation, raw-body HMAC verified
+1. `GET  /workspaces/:id/billing` — quote + trial + paid-until status
+2. `POST /workspaces/:id/billing/create-subscription` — recurring flow (what the
+   pricing page uses): creates a Razorpay Plan + monthly Subscription server-side,
+   returns `subscriptionId` + publishable `keyId` for Checkout
+3. `POST /workspaces/:id/billing/verify-subscription` — checkout success handler →
+   HMAC(payment_id|subscription_id) check → plan active
+4. `POST /workspaces/:id/billing/order` / `.../verify` — one-time-order variant
+5. `POST /billing/webhook` — server-to-server confirmation (payment.captured,
+   order.paid, subscription.charged renewals), raw-body HMAC verified
+
+Frontend: `login.html` / `signup.html` / `account.html` in `hysav-site/` handle
+sessions (bearer token in localStorage via `auth.js`); `billing.js` wires
+Razorpay Checkout on the pricing + account pages, degrading to the waitlist CTA
+when Razorpay isn't configured.
+
+**QA test login (dev-only):** `hynexsbusiness@gmail.com`, password from
+`SEED_TEST_USER_PASSWORD` (never hardcoded/committed; account not created if
+unset, never created when NODE_ENV=production). Seeded with a 5-person
+workspace on a pre-paid top-tier plan (365 days) so the logged-in flow is
+testable without running checkout.
 
 ## Security notes
 

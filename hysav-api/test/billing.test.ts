@@ -4,6 +4,7 @@ import {
   quoteForMembers,
   trialEndsAt,
   verifyCheckoutSignature,
+  verifySubscriptionSignature,
   verifyWebhookSignature,
 } from "../src/services/billing.ts";
 
@@ -59,6 +60,14 @@ describe("Razorpay signature verification", () => {
   it("rejects garbage signatures without throwing", () => {
     expect(verifyCheckoutSignature("order_123", "pay_456", "not-hex-at-all", secret)).toBe(false);
     expect(verifyCheckoutSignature("order_123", "pay_456", "", secret)).toBe(false);
+  });
+
+  it("verifies subscription signatures (payment_id|subscription_id order)", () => {
+    const sig = createHmac("sha256", secret).update("pay_456|sub_789").digest("hex");
+    expect(verifySubscriptionSignature("pay_456", "sub_789", sig, secret)).toBe(true);
+    // operand order matters — the orders-flow ordering must NOT validate
+    const wrongOrder = createHmac("sha256", secret).update("sub_789|pay_456").digest("hex");
+    expect(verifySubscriptionSignature("pay_456", "sub_789", wrongOrder, secret)).toBe(false);
   });
 
   it("verifies webhook bodies byte-for-byte", () => {

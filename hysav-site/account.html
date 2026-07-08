@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Account</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="demo-body">
+
+<header class="demo-topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <span class="demo-badge" id="ws-badge">…</span>
+    <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Sign out</button>
+  </div>
+</header>
+
+<main class="demo-main">
+  <div class="wrap">
+    <div class="demo-greeting">
+      <h2 id="hello">Loading…</h2>
+      <p id="hello-sub"></p>
+    </div>
+
+    <div class="account-grid" style="margin-top:26px">
+      <!-- plan / billing -->
+      <div class="panel">
+        <h3>Plan &amp; billing <span class="plan-badge" id="plan-badge" style="display:none"></span></h3>
+        <p class="billing-note" id="plan-desc">…</p>
+        <p class="billing-note" id="plan-status"></p>
+        <div id="pay-area">
+          <button class="btn btn-primary" id="pay-btn" type="button" style="display:none">Subscribe</button>
+          <a class="btn btn-ghost" id="pay-fallback" href="index.html#waitlist" style="display:none">Join the waitlist</a>
+          <div class="auth-err" id="pay-err" role="alert"></div>
+        </div>
+      </div>
+
+      <!-- team -->
+      <div class="panel">
+        <h3>Team</h3>
+        <div class="t-users" id="team-chips"></div>
+        <p class="billing-note" style="margin-top:14px">Your live dashboard uses this member list for idle-seat
+          and duplicate detection. <a href="demo.html">See the interactive demo</a> for what it looks like with data.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="auth.js"></script>
+<script src="billing.js"></script>
+<script>
+(function () {
+  if (!HySav.token()) { window.location.href = "login.html"; return; }
+  document.getElementById("logout-btn").addEventListener("click", HySav.logout);
+
+  var payBtn = document.getElementById("pay-btn");
+  var payFallback = document.getElementById("pay-fallback");
+  var payErr = document.getElementById("pay-err");
+  var badge = document.getElementById("plan-badge");
+
+  function showErr(msg) {
+    payErr.textContent = msg;
+    payErr.classList.add("show");
+    payBtn.disabled = false;
+    payBtn.textContent = "Try again";
+  }
+
+  function renderBilling(ctx) {
+    var b = ctx.billing;
+    document.getElementById("plan-desc").textContent =
+      b.quote.description + " — ₹" + Math.round(b.quote.amountPaise / 100) + "/month for your team of " + b.quote.memberCount + ".";
+    badge.style.display = "";
+    if (b.paidUntil && b.active) {
+      badge.textContent = "Active";
+      badge.className = "plan-badge ok";
+      document.getElementById("plan-status").textContent = "Paid until " + b.paidUntil.slice(0, 10) + ".";
+    } else if (b.trial && b.trial.active) {
+      badge.textContent = "Trial";
+      badge.className = "plan-badge warn";
+      document.getElementById("plan-status").textContent =
+        "Free trial ends " + b.trial.endsAt.slice(0, 10) + ". Subscribe to keep access.";
+    } else {
+      badge.textContent = "Expired";
+      badge.className = "plan-badge bad";
+      document.getElementById("plan-status").textContent = "Your 3-day trial has ended.";
+    }
+    if (!(b.paidUntil && b.active)) {
+      if (b.configured) {
+        payBtn.style.display = "";
+        payBtn.textContent = "Subscribe — ₹" + Math.round(b.quote.amountPaise / 100) + "/mo";
+      } else {
+        /* Razorpay not configured on the backend → degrade to waitlist CTA */
+        payFallback.style.display = "";
+      }
+    }
+  }
+
+  HySavBilling.loadContext().catch(function (e) {
+    /* transient failure (network / rate limit / 5xx): keep the session,
+       show a soft error instead of bouncing the user to login */
+    document.getElementById("hello").textContent = "Couldn't load your account";
+    document.getElementById("hello-sub").textContent = (e && e.message ? e.message + " — " : "") + "refresh to retry.";
+    return undefined;
+  }).then(function (ctx) {
+    if (ctx === undefined) return; /* handled above */
+    if (!ctx) { HySav.clearToken(); window.location.href = "login.html"; return; }
+    document.getElementById("hello").textContent = "Hi, " + ctx.user.name.split(" ")[0] + " 👋";
+    document.getElementById("hello-sub").textContent = ctx.user.email;
+    document.getElementById("ws-badge").textContent = ctx.workspace.name + " · " + ctx.workspace.role;
+    renderBilling(ctx);
+
+    HySav.api("/workspaces/" + ctx.workspace.id).then(function (ws) {
+      document.getElementById("team-chips").innerHTML = ws.members.map(function (m) {
+        return '<span class="t-user"><span class="av" style="background:' + (m.color || "#5D574B") + '">' +
+          m.initials + "</span>" + m.name + (m.role === "admin" ? " · admin" : "") + "</span>";
+      }).join("");
+    });
+
+    payBtn.addEventListener("click", function () {
+      payErr.classList.remove("show");
+      payBtn.disabled = true;
+      payBtn.textContent = "Opening secure checkout…";
+      HySavBilling.startCheckout({
+        workspaceId: ctx.workspace.id,
+        onSuccess: function () {
+          payBtn.style.display = "none";
+          badge.textContent = "Active";
+          badge.className = "plan-badge ok";
+          document.getElementById("plan-status").textContent = "You're upgraded — payment confirmed. 🎉";
+        },
+        onError: showErr,
+        onDismiss: function () {
+          payBtn.disabled = false;
+          payBtn.textContent = "Subscribe — ₹" + Math.round(ctx.billing.quote.amountPaise / 100) + "/mo";
+        }
+      }).catch(function (e) {
+        if (e.status === 503) {
+          payBtn.style.display = "none";
+          payFallback.style.display = "";
+          showErr("Payments aren't live yet — join the waitlist and we'll tell you the moment they are.");
+        } else {
+          showErr(e.message);
+        }
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

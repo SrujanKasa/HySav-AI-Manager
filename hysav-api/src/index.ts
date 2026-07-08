@@ -12,7 +12,7 @@ import { toolsRouter } from "./routes/tools.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { demoRouter, insightsRouter } from "./routes/insights.ts";
 import { billingRouter, rawBodies, webhookRouter } from "./routes/billing.ts";
-import { seedDemoWorkspace } from "./seed.ts";
+import { seedDemoWorkspace, seedTestAccount } from "./seed.ts";
 import { scanWorkspace, sendDigest } from "./services/alerts.ts";
 
 const app = express();
@@ -53,6 +53,7 @@ app.use(errorHandler);
 
 if (env.seedOnBoot) {
   if (seedDemoWorkspace()) console.log("[seed] demo workspace 'Otterworks Inc.' created");
+  seedTestAccount(); // dev/test-only QA login; no-ops in production or without SEED_TEST_USER_PASSWORD
 }
 
 app.listen(env.port, () => {

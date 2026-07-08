@@ -657,6 +657,74 @@ footer a:hover { color: var(--ink); }
 .faq details[open] summary::after { content: "–"; }
 .faq details p { color: var(--ink-soft); font-size: 0.95rem; margin: 12px 0 0; }
 
+/* ---------- auth pages (login / signup / account) ---------- */
+.auth-wrap {
+  max-width: 430px;
+  margin: 64px auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  padding: 38px 36px;
+}
+.auth-wrap h2 { margin-bottom: 6px; }
+.auth-sub { color: var(--ink-soft); font-size: 0.92rem; margin-bottom: 22px; }
+.auth-wrap label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 16px 0 6px;
+}
+.auth-wrap input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  outline: none;
+}
+.auth-wrap input:focus { border-color: var(--ember); }
+.auth-wrap .btn { width: 100%; justify-content: center; margin-top: 24px; }
+.auth-err {
+  display: none;
+  background: var(--red-soft);
+  color: var(--red);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-size: 0.86rem;
+  margin-top: 14px;
+}
+.auth-err.show { display: block; }
+.auth-alt { text-align: center; font-size: 0.88rem; color: var(--ink-soft); margin-top: 18px; }
+
+/* account page */
+.account-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: start; }
+@media (max-width: 800px) { .account-grid { grid-template-columns: 1fr; } }
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 26px;
+  box-shadow: var(--shadow-sm);
+}
+.panel h3 { margin-bottom: 14px; }
+.plan-badge {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+.plan-badge.ok { background: var(--green-soft); color: var(--green); }
+.plan-badge.warn { background: var(--amber-soft); color: var(--amber); }
+.plan-badge.bad { background: var(--red-soft); color: var(--red); }
+.billing-note { font-size: 0.88rem; color: var(--ink-soft); margin: 10px 0 18px; }
+
 /* ---------- reveal on scroll ---------- */
 .rv { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
 .rv.in { opacity: 1; transform: none; }

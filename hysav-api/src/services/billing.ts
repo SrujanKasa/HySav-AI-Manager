@@ -73,6 +73,19 @@ export function verifyCheckoutSignature(
   return safeEqualHex(expected, signature);
 }
 
+/** Subscription-checkout signature: HMAC-SHA256(payment_id + "|" + subscription_id, key_secret).
+ *  Note the operand order — for subscriptions Razorpay signs payment first,
+ *  the reverse of the one-time-order flow above. */
+export function verifySubscriptionSignature(
+  paymentId: string,
+  subscriptionId: string,
+  signature: string,
+  keySecret: string,
+): boolean {
+  const expected = createHmac("sha256", keySecret).update(`${paymentId}|${subscriptionId}`).digest("hex");
+  return safeEqualHex(expected, signature);
+}
+
 /** Webhook signature: HMAC-SHA256 of the raw request body with the webhook secret. */
 export function verifyWebhookSignature(rawBody: Buffer, signature: string, webhookSecret: string): boolean {
   const expected = createHmac("sha256", webhookSecret).update(rawBody).digest("hex");

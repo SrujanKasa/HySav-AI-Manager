@@ -4,8 +4,10 @@
 // out of the actual waste engine instead of being asserted.
 //
 // Demo login (documented, not secret): maya@otterworks.dev / otterworks-demo!
+import { randomUUID } from "node:crypto";
 import { hashPassword } from "./crypto.ts";
 import { all, db, now, one, run, uuid } from "./db.ts";
+import { quoteForMembers } from "./services/billing.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -175,6 +177,72 @@ export function seedDemoWorkspace(): boolean {
       );
     }
   }
+  return true;
+}
+
+/* ============================================================
+   DEV/TEST-ONLY QA seed — hard-excluded from production.
+   Creates the QA login hynexsbusiness@gmail.com whose password comes from
+   SEED_TEST_USER_PASSWORD (never hardcoded, never committed). The workspace
+   gets 5 members so the live quote lands on the top tier (Team Plus,
+   ₹450/mo) and a paid period 365 days out, so QA can exercise the full
+   logged-in flow without running Razorpay checkout every time.
+   ============================================================ */
+export function seedTestAccount(): boolean {
+  if (process.env.NODE_ENV === "production") return false; // never in prod
+  const password = process.env.SEED_TEST_USER_PASSWORD;
+  if (!password) {
+    console.warn("[seed] SEED_TEST_USER_PASSWORD not set — QA test account skipped");
+    return false;
+  }
+  const email = "hynexsbusiness@gmail.com";
+  if (one("SELECT id FROM users WHERE email = ?", email)) return false;
+
+  const ts = now();
+  const workspaceId = uuid();
+  const userId = uuid();
+  run("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, ?)", workspaceId, "HyNexs QA", ts);
+  run(
+    "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+    userId, email, "HyNexs QA", hashPassword(password), ts,
+  );
+  run(
+    "INSERT INTO memberships (user_id, workspace_id, role, initials, color, title, created_at) VALUES (?, ?, 'admin', 'HQ', '#E4570F', 'QA Admin', ?)",
+    userId, workspaceId, ts,
+  );
+
+  // filler members (random unusable passwords) to push the quote to Team Plus
+  const fillers = ["Asha Rao", "Kiran Patel", "Neel Shah", "Ravi Iyer"];
+  for (const name of fillers) {
+    const fid = uuid();
+    run(
+      "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+      fid,
+      name.toLowerCase().replace(/\s+/g, ".") + "@hysav.test",
+      name,
+      hashPassword(randomUUID()), // random throwaway — these accounts are never logged into
+      ts,
+    );
+    run(
+      "INSERT INTO memberships (user_id, workspace_id, role, initials, color, title, created_at) VALUES (?, ?, 'member', ?, '#2B7DB8', 'QA member', ?)",
+      fid, workspaceId, name.split(" ").map((w) => w[0]).join(""), ts,
+    );
+  }
+
+  // pre-activated top-tier plan: paid for a year, no Razorpay ids (dev seed)
+  const memberTotal = 1 + fillers.length;
+  run(
+    `INSERT INTO payments (id, workspace_id, amount_paise, currency, status, period_start, period_end, created_at, updated_at)
+     VALUES (?, ?, ?, 'INR', 'paid', ?, ?, ?, ?)`,
+    uuid(),
+    workspaceId,
+    quoteForMembers(memberTotal).amountPaise,
+    ts,
+    new Date(Date.now() + 365 * DAY_MS).toISOString(),
+    ts,
+    ts,
+  );
+  console.log(`[seed] QA test account '${email}' created (dev-only, Team Plus paid 365d)`);
   return true;
 }
 

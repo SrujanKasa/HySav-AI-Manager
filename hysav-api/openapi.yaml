@@ -350,6 +350,42 @@ paths:
         "201": { description: orderId, amountPaise, currency, keyId, description }
         "503": { description: Razorpay keys not configured yet }
 
+  /workspaces/{id}/billing/create-subscription:
+    post:
+      tags: [billing]
+      summary: Create a Razorpay subscription for this workspace's plan (admin)
+      description: >
+        Recurring flow used by the pricing page. Creates a Razorpay Plan for
+        the current server-side quote, then a monthly Subscription (12 cycles).
+        Returns subscriptionId + the publishable keyId for Checkout; the
+        key_secret never leaves the server. 503 until Razorpay keys are set.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "201": { description: subscriptionId, amountPaise, currency, keyId, description }
+        "503": { description: Razorpay keys not configured yet }
+
+  /workspaces/{id}/billing/verify-subscription:
+    post:
+      tags: [billing]
+      summary: Verify a subscription-checkout signature and activate the plan (admin)
+      description: >
+        Signature is HMAC-SHA256(payment_id + "|" + subscription_id) — note the
+        operand order differs from the one-time order flow.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [razorpayPaymentId, razorpaySubscriptionId, razorpaySignature]
+              properties:
+                razorpayPaymentId: { type: string }
+                razorpaySubscriptionId: { type: string }
+                razorpaySignature: { type: string }
+      responses:
+        "200": { description: Plan active; paidUntil returned }
+        "400": { description: Signature verification failed }
+
   /workspaces/{id}/billing/verify:
     post:
       tags: [billing]

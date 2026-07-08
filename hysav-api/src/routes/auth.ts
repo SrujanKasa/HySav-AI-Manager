@@ -8,8 +8,10 @@ export const authRouter = Router();
 
 const SESSION_DAYS = 30;
 
-// Auth endpoints are the brute-force target — rate limit them hard.
-authRouter.use(rateLimit(10, 60_000));
+// Credential endpoints are the brute-force target — rate limit those hard.
+// /me and /logout are NOT limited: every page load calls /me, and throttling
+// it signs users out for browsing too fast.
+const credentialLimiter = rateLimit(10, 60_000);
 
 function createSession(userId: string): string {
   const token = generateToken();
@@ -32,7 +34,7 @@ const registerSchema = z.object({
   workspaceName: z.string().min(1).max(120),
 });
 
-authRouter.post("/register", (req, res) => {
+authRouter.post("/register", credentialLimiter, (req, res) => {
   const body = parseBody(registerSchema, req.body);
   const email = body.email.toLowerCase();
   if (one("SELECT id FROM users WHERE email = ?", email)) {
@@ -62,7 +64,7 @@ authRouter.post("/register", (req, res) => {
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1).max(200) });
 
-authRouter.post("/login", (req, res) => {
+authRouter.post("/login", credentialLimiter, (req, res) => {
   const body = parseBody(loginSchema, req.body);
   const user = one<{ id: string; email: string; name: string; password_hash: string }>(
     "SELECT id, email, name, password_hash FROM users WHERE email = ?",

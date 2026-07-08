@@ -56,7 +56,7 @@
           <li>No card required to start</li>
           <li>Upgrade only if it earns its keep</li>
         </ul>
-        <a class="btn btn-ghost" href="index.html#waitlist">Start the free trial</a>
+        <a class="btn btn-ghost" href="signup.html">Start the free trial</a>
       </div>
 
       <!-- TEAM -->
@@ -73,7 +73,8 @@
           <li>Team view — who uses what</li>
           <li>Up to 3 team members</li>
         </ul>
-        <a class="btn btn-primary" href="index.html#waitlist">Get early access</a>
+        <a class="btn btn-primary" href="index.html#waitlist" data-subscribe>Get early access</a>
+        <div class="auth-err" data-pay-err role="alert" style="margin-top:12px"></div>
       </div>
 
       <!-- TEAM PLUS -->
@@ -89,7 +90,8 @@
           <li>Weekly digest for the whole team</li>
           <li>Priority support from actual humans</li>
         </ul>
-        <a class="btn btn-ghost" href="index.html#waitlist">Join the waitlist</a>
+        <a class="btn btn-ghost" href="index.html#waitlist" data-subscribe>Join the waitlist</a>
+        <div class="auth-err" data-pay-err role="alert" style="margin-top:12px"></div>
       </div>
     </div>
 
@@ -187,6 +189,61 @@
 </footer>
 
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="auth.js"></script>
+<script src="billing.js"></script>
 <script src="site.js"></script>
+<script>
+/* Razorpay upgrade flow on the pricing tiers.
+   Logged out, or backend unreachable/unconfigured → the buttons keep their
+   existing waitlist CTAs (graceful degradation, nothing breaks). Logged in
+   with Razorpay configured → the paid-tier buttons become live "Subscribe"
+   buttons; the subscription is created server-side and the success state
+   only shows after the backend confirms the signature. */
+(function () {
+  HySavBilling.loadContext().catch(function () { return null; }).then(function (ctx) {
+    if (!ctx || !ctx.billing.configured) return; /* keep waitlist CTAs */
+    var amount = Math.round(ctx.billing.quote.amountPaise / 100);
+
+    document.querySelectorAll("[data-subscribe]").forEach(function (btn) {
+      var errBox = btn.parentElement.querySelector("[data-pay-err]");
+      if (ctx.billing.active && ctx.billing.paidUntil) {
+        btn.textContent = "✓ Plan active";
+        btn.removeAttribute("href");
+        return;
+      }
+      btn.textContent = "Subscribe — ₹" + amount + "/mo for your team";
+      btn.removeAttribute("href");
+      btn.style.cursor = "pointer";
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        errBox.classList.remove("show");
+        btn.textContent = "Opening secure checkout…";
+        HySavBilling.startCheckout({
+          workspaceId: ctx.workspace.id,
+          onSuccess: function () {
+            btn.textContent = "✓ You're upgraded";
+            document.querySelectorAll("[data-subscribe]").forEach(function (b) {
+              if (b !== btn) { b.textContent = "✓ Plan active"; b.removeAttribute("href"); }
+            });
+          },
+          onError: function (msg) {
+            errBox.textContent = msg + " — no money moves until a payment succeeds.";
+            errBox.classList.add("show");
+            btn.textContent = "Try again — ₹" + amount + "/mo";
+          },
+          onDismiss: function () {
+            btn.textContent = "Subscribe — ₹" + amount + "/mo for your team";
+          }
+        }).catch(function (err) {
+          errBox.textContent = err.message;
+          errBox.classList.add("show");
+          btn.textContent = "Try again — ₹" + amount + "/mo";
+        });
+      });
+    });
+  });
+})();
+</script>
 </body>
 </html>
