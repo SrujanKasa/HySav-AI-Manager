@@ -10,7 +10,7 @@
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="14" fill="#050505"/>
-  <text x="7" y="45" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="34" letter-spacing="-1.5">
-    <tspan fill="url(#hy)">H</tspan><tspan fill="url(#sav)">S</tspan>
+  <text x="32" y="40" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="21" letter-spacing="-1">
+    <tspan fill="url(#hy)">Hy</tspan><tspan fill="url(#sav)">Sav</tspan>
   </text>
 </svg>
