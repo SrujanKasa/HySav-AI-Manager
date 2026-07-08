@@ -9,3 +9,4 @@ hysav-api/data/
 .vercel
 .env*
 data/
+hysav-api/dist/

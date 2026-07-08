@@ -1,7 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": null,
+  "buildCommand": "npm --prefix hysav-api install && npm --prefix hysav-api run build",
   "outputDirectory": "hysav-site",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "/api/index" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "hysav-api/openapi.yaml"
+    }
+  }
 }

@@ -1,0 +1,7 @@
+data/
+hysav-api/data/
+*.db
+*.db-wal
+*.db-shm
+.env
+Media/

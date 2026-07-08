@@ -88,6 +88,13 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(err.status).json({ error: err.message });
     return;
   }
+  // Deploy-time misconfiguration deserves an honest answer, not a mystery 500.
+  if (err instanceof Error && err.message.includes("MONGODB_URI is required")) {
+    res.status(503).json({
+      error: "Database not connected yet — set MONGODB_URI (MongoDB Atlas connection string) in the server environment",
+    });
+    return;
+  }
   // Never leak internals (or anything that could contain a credential).
   console.error("[api] unhandled error:", err);
   res.status(500).json({ error: "Internal server error" });
