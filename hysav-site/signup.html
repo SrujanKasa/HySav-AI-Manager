@@ -47,6 +47,7 @@
 
     <div class="auth-err" id="su-err" role="alert"></div>
     <button class="btn btn-primary" type="submit" id="su-submit">Start the free trial</button>
+    <a class="btn btn-ghost" id="google-btn" href="/api/v1/auth/google" style="display:none;width:100%;justify-content:center;margin-top:12px">Sign up with Google</a>
     <p class="auth-alt">Already have a workspace? <a href="login.html">Log in</a></p>
   </form>
 </main>
@@ -55,6 +56,9 @@
 <script>
 (function () {
   if (HySav.token()) { window.location.href = "account.html"; return; }
+  HySav.api("/auth/methods").then(function (m) {
+    if (m.google) document.getElementById("google-btn").style.display = "";
+  }).catch(function () { /* API down — password form still shows */ });
   var form = document.getElementById("signup-form");
   var err = document.getElementById("su-err");
   var btn = document.getElementById("su-submit");

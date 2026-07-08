@@ -34,6 +34,12 @@ export const env = {
   // Razorpay (test keys work — rzp_test_...). Billing endpoints respond with
   // an honest 503 until these are set, so the code path is deploy-ready now
   // and activates the moment keys land in the environment.
+  // Google OAuth (optional). Create a Web client at
+  // https://console.cloud.google.com/apis/credentials with redirect URI
+  // <BASE_URL>/api/v1/auth/google/callback. Login pages hide the Google
+  // button until both values are set.
+  googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || null,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || null,
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || null,

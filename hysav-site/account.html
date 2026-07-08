@@ -62,6 +62,13 @@
 <script src="billing.js"></script>
 <script>
 (function () {
+  // Google OAuth hands the session token over in the URL fragment (fragments
+  // never leave the browser); stash it and scrub the URL before anything else.
+  var hashToken = location.hash.match(/token=([^&]+)/);
+  if (hashToken) {
+    HySav.setToken(hashToken[1]);
+    history.replaceState(null, "", location.pathname);
+  }
   if (!HySav.token()) { window.location.href = "login.html"; return; }
   document.getElementById("logout-btn").addEventListener("click", HySav.logout);
 
