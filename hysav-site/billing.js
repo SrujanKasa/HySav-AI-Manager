@@ -7,7 +7,7 @@
    subscription ids + signature to /billing/verify-subscription and wait for
    the backend's confirmation before showing any "upgraded" state.
    If Razorpay isn't configured (backend replies 503) the caller degrades to
-   the waitlist CTA instead of breaking. */
+   the signup/notice CTA instead of breaking. */
 var HySavBilling = (function () {
   /* Resolves null only when there's genuinely no session (no token, or the
      backend says 401). Transient failures (network, rate limit, 5xx) reject

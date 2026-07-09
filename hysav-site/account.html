@@ -41,7 +41,7 @@
         <p class="billing-note" id="plan-status"></p>
         <div id="pay-area">
           <button class="btn btn-primary" id="pay-btn" type="button" style="display:none">Subscribe</button>
-          <a class="btn btn-ghost" id="pay-fallback" href="index.html#waitlist" style="display:none">Join the waitlist</a>
+          <p class="billing-note" id="pay-fallback" style="display:none">Payments are being switched on — check back shortly. Your trial and data are unaffected.</p>
           <div class="auth-err" id="pay-err" role="alert"></div>
         </div>
       </div>
@@ -108,7 +108,7 @@
         payBtn.style.display = "";
         payBtn.textContent = "Subscribe — ₹" + Math.round(b.quote.amountPaise / 100) + "/mo";
       } else {
-        /* Razorpay not configured on the backend → degrade to waitlist CTA */
+        /* Razorpay not configured on the backend yet → honest note, no dead button */
         payFallback.style.display = "";
       }
     }
@@ -156,7 +156,7 @@
         if (e.status === 503) {
           payBtn.style.display = "none";
           payFallback.style.display = "";
-          showErr("Payments aren't live yet — join the waitlist and we'll tell you the moment they are.");
+          showErr("Payments aren't switched on yet — check back shortly.");
         } else {
           showErr(e.message);
         }

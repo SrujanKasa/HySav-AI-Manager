@@ -3,7 +3,9 @@
 Launch-ready marketing website for **HySav**, a lightweight dashboard that shows small teams
 every AI subscription they pay for, what's actually being used, and what's going to waste.
 
-Static site — plain HTML/CSS/JS, no build step, no backend.
+Static site — plain HTML/CSS/JS, no build step. Talks to the `hysav-api`
+backend when served alongside it (auth, billing, live demo data); degrades to
+built-in sample data when hosted purely statically.
 
 ## Run locally
 
@@ -21,15 +23,20 @@ Then visit `http://localhost:8000` (or the port `serve` prints).
 
 ```
 index.html     Landing page: hero, problem, embedded demo, how-it-works,
-               differentiation, social-proof placeholders, waitlist form, footer
+               differentiation, social-proof placeholders, get-started CTA, footer
 demo.html      Interactive dashboard demo (also embedded in index via iframe ?embed=1)
-demo.js        Demo logic + all mock data (fictional company "Otterworks")
-pricing.html   Pricing page: 3 flat tiers + FAQ
+demo.js        Demo logic (fetches /api/v1/demo/dashboard, falls back to mock data)
+pricing.html   Pricing page: trial + 2 paid tiers, FAQ, Razorpay checkout wiring
+login.html     Email/password login (+ Google button when OAuth configured)
+signup.html    Workspace signup — the front door to the 3-day trial
+account.html   Logged-in view: plan/billing, subscribe via Razorpay, team list
+auth.js        Session helpers (bearer token in localStorage, API fetch wrapper)
+billing.js     Razorpay Checkout flow (subscription create → verify)
 styles.css     Full design system (palette, type, components, responsive rules)
-site.js        Shared behavior: scroll reveals, hero bars, waitlist form (mocked)
-assets/        Brand assets: logo.svg (full lockup, dark), favicon.svg
+site.js        Shared behavior: scroll reveals, hero bars, auth-aware nav link
+assets/        Brand assets: logo.svg (wordmark, dark), favicon.svg
 assets/logos/  Real product icons for the AI tools shown on the site
-               (hero card, demo tool cards, team chips, waitlist chips)
+               (hero card, demo tool cards, team chips)
 ```
 
 ## Branding
@@ -49,9 +56,10 @@ spans (`brand-hy` / `brand-sav`) plus the SVGs in `assets/`.
 
 ## Notes
 
-- **Waitlist form is mocked** — it validates, captures email/team size/tool multi-select,
-  logs the payload to the console, and shows a success state. Wire the `submit` handler
-  in `site.js` to a real endpoint when ready.
-- **Demo data** lives at the top of `demo.js` (`MEMBERS`, `TOOLS`, `ALERTS`) — edit freely.
+- **Signup/login are real** — they call the hysav-api backend; there is no
+  waitlist anymore. Users sign up, get a 3-day full trial, and pay via
+  Razorpay to keep the product.
+- **Demo fallback data** lives at the top of `demo.js` (`MEMBERS`, `TOOLS`,
+  `ALERTS`) — used only when the API isn't reachable.
 - Icons: [Lucide](https://lucide.dev) via CDN. Fonts: Space Grotesk + Inter via Google Fonts.
 - No stock imagery, no build tooling, fully responsive.

@@ -42,36 +42,4 @@ if (window.lucide) { window.lucide.createIcons(); }
   }, 350);
 })();
 
-// Waitlist form (mocked — no backend)
-(function () {
-  var form = document.getElementById("waitlist-form");
-  if (!form) return;
-
-  // multi-select tool chips
-  form.querySelectorAll(".chip").forEach(function (chip) {
-    chip.addEventListener("click", function (e) {
-      e.preventDefault();
-      chip.classList.toggle("on");
-    });
-  });
-
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
-    var email = form.querySelector("#wl-email");
-    var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
-    email.classList.toggle("field-err", !valid);
-    if (!valid) { email.focus(); return; }
-
-    // capture (would POST to backend later)
-    var payload = {
-      email: email.value.trim(),
-      teamSize: form.querySelector("#wl-size").value,
-      tools: Array.from(form.querySelectorAll(".chip.on")).map(function (c) {
-        return c.textContent.trim();
-      })
-    };
-    console.log("Waitlist signup (mock):", payload);
-
-    form.classList.add("done");
-  });
-})();
+// (The old mocked waitlist form is gone — signup.html is the real front door.)

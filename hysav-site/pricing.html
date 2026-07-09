@@ -27,7 +27,7 @@
       <a href="index.html#product">Product</a>
       <a href="demo.html">Live demo</a>
       <a href="pricing.html" class="active">Pricing</a>
-      <a class="btn btn-primary btn-sm" href="index.html#waitlist">Get early access</a>
+      <a class="btn btn-primary btn-sm" href="signup.html">Start free trial</a>
     </nav>
   </div>
 </header>
@@ -73,7 +73,7 @@
           <li>Team view — who uses what</li>
           <li>Up to 3 team members</li>
         </ul>
-        <a class="btn btn-primary" href="index.html#waitlist" data-subscribe>Get early access</a>
+        <a class="btn btn-primary" href="signup.html" data-subscribe>Start the free trial</a>
         <div class="auth-err" data-pay-err role="alert" style="margin-top:12px"></div>
       </div>
 
@@ -90,7 +90,7 @@
           <li>Weekly digest for the whole team</li>
           <li>Priority support from actual humans</li>
         </ul>
-        <a class="btn btn-ghost" href="index.html#waitlist" data-subscribe>Join the waitlist</a>
+        <a class="btn btn-ghost" href="signup.html" data-subscribe>Start the free trial</a>
         <div class="auth-err" data-pay-err role="alert" style="margin-top:12px"></div>
       </div>
     </div>
@@ -98,7 +98,7 @@
     <p class="muted small rv" style="text-align:center;margin-top:28px">
       Simple math: ₹300/month up to 3 people, +₹100 when you pass 3, then ₹50 per extra person beyond 4.
       Every plan starts with a 3-day free trial of everything — no card required.
-      Pay by UPI, card, or netbanking via Razorpay. Early-access teams get Team free for 3 months.
+      Pay by UPI, card, or netbanking via Razorpay. The moment you pay, the product is yours.
     </p>
   </div>
 </section>
@@ -159,8 +159,8 @@
   <div class="wrap" style="text-align:center">
     <div class="rv">
       <h2>Find the money hiding in your stack.</h2>
-      <p class="muted" style="max-width:32em;margin:0 auto 28px">Join the waitlist — or spend two minutes in the demo first and see what HySav would show you.</p>
-      <a class="btn btn-primary btn-lg" href="index.html#waitlist">Join the waitlist</a>
+      <p class="muted" style="max-width:32em;margin:0 auto 28px">Start the 3-day free trial — or spend two minutes in the demo first and see what HySav would show you.</p>
+      <a class="btn btn-primary btn-lg" href="signup.html">Start the free trial</a>
       &nbsp;&nbsp;
       <a class="btn btn-ghost btn-lg" href="demo.html">Try the live demo</a>
     </div>
@@ -181,7 +181,7 @@
     <div>
       <a href="demo.html">Live demo</a>
       <a href="pricing.html">Pricing</a>
-      <a href="index.html#waitlist">Early access</a>
+      <a href="signup.html">Sign up</a>
       <a href="#">Privacy</a>
       <a href="#">Terms</a>
     </div>
@@ -196,13 +196,13 @@
 <script>
 /* Razorpay upgrade flow on the pricing tiers.
    Logged out, or backend unreachable/unconfigured → the buttons keep their
-   existing waitlist CTAs (graceful degradation, nothing breaks). Logged in
+   signup CTAs (sign up → trial → subscribe from the account page). Logged in
    with Razorpay configured → the paid-tier buttons become live "Subscribe"
    buttons; the subscription is created server-side and the success state
    only shows after the backend confirms the signature. */
 (function () {
   HySavBilling.loadContext().catch(function () { return null; }).then(function (ctx) {
-    if (!ctx || !ctx.billing.configured) return; /* keep waitlist CTAs */
+    if (!ctx || !ctx.billing.configured) return; /* keep signup CTAs */
     var amount = Math.round(ctx.billing.quote.amountPaise / 100);
 
     document.querySelectorAll("[data-subscribe]").forEach(function (btn) {
