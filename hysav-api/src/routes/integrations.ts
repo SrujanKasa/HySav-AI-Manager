@@ -6,6 +6,7 @@ import { z } from "zod";
 import { decryptSecret, encryptSecret } from "../crypto.ts";
 import { all, insert, now, one, remove, update, uuid } from "../db.ts";
 import { HttpError, currentUser, parseBody, requireAuth, requireMembership } from "../middleware.ts";
+import { assertPlanWritable } from "../services/plan.ts";
 import { providers } from "../providers/index.ts";
 import type { ToolRow } from "../services/toolData.ts";
 
@@ -43,6 +44,7 @@ const connectSchema = z.object({
 
 integrationsRouter.post("/workspaces/:id/integrations", async (req, res) => {
   await requireMembership(req, req.params.id, true);
+  await assertPlanWritable(req.params.id);
   const user = currentUser(req);
   const body = parseBody(connectSchema, req.body);
   const p = providers[body.provider];
@@ -78,6 +80,7 @@ integrationsRouter.delete("/workspaces/:id/integrations/:provider", async (req, 
  *  like a manual entry would — same collection, same downstream logic. */
 integrationsRouter.post("/workspaces/:id/integrations/:provider/sync", async (req, res) => {
   await requireMembership(req, req.params.id, true);
+  await assertPlanWritable(req.params.id);
   const providerId = req.params.provider;
   const p = providers[providerId];
   if (!p) throw new HttpError(404, "Unknown provider");

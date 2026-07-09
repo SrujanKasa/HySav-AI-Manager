@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { all, insert, now, one, remove, update, uuid } from "../db.ts";
 import { HttpError, currentUser, parseBody, requireAuth, requireMembership } from "../middleware.ts";
+import { assertPlanWritable } from "../services/plan.ts";
 import type { ToolRow } from "../services/toolData.ts";
 
 export const toolsRouter = Router();
@@ -85,6 +86,7 @@ toolsRouter.get("/workspaces/:id/tools", async (req, res) => {
 
 toolsRouter.post("/workspaces/:id/tools", async (req, res) => {
   await requireMembership(req, req.params.id, true);
+  await assertPlanWritable(req.params.id);
   const body = parseBody(toolSchema, req.body);
   const id = uuid();
   const ts = now();
@@ -129,6 +131,11 @@ toolsRouter.get("/tools/:id", async (req, res) => {
 
 toolsRouter.patch("/tools/:id", async (req, res) => {
   const tool = await getToolChecked(req, req.params.id, true);
+  // note: marking a tool cancelled is still allowed on an expired plan —
+  // that's spend REDUCTION, which we never gate
+  if (req.body?.status !== "cancelled" || Object.keys(req.body).length > 1) {
+    await assertPlanWritable(tool.workspace_id);
+  }
   const body = parseBody(toolSchema.partial(), req.body);
   const merged = {
     name: body.name ?? tool.name,
@@ -169,6 +176,7 @@ const usageSchema = z.object({
 
 toolsRouter.post("/tools/:id/usage", async (req, res) => {
   const tool = await getToolChecked(req, req.params.id); // members may report usage
+  await assertPlanWritable(tool.workspace_id);
   const body = parseBody(usageSchema, req.body);
   const ts = body.capturedAt ?? now();
   await insert("usage_snapshots", {
@@ -227,6 +235,7 @@ function escapeRegex(s: string): string {
 
 toolsRouter.post("/workspaces/:id/tools/import", async (req, res) => {
   await requireMembership(req, req.params.id, true);
+  await assertPlanWritable(req.params.id);
   const csv = typeof req.body === "string" ? req.body : (req.body?.csv as string | undefined);
   if (!csv || typeof csv !== "string" || csv.length > 1_000_000) {
     throw new HttpError(400, "Send CSV text (as text/csv body or JSON {\"csv\": ...}), max 1MB");

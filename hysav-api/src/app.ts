@@ -11,6 +11,7 @@ import { invitesRouter, workspacesRouter } from "./routes/workspaces.ts";
 import { toolsRouter } from "./routes/tools.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { demoRouter, insightsRouter } from "./routes/insights.ts";
+import { catalogRouter } from "./routes/catalog.ts";
 import { billingRouter, rawBodies, webhookRouter } from "./routes/billing.ts";
 import { seedDemoWorkspace, seedTestAccount } from "./seed.ts";
 
@@ -56,6 +57,7 @@ api.use("/auth", authRouter);
 api.use("/workspaces", workspacesRouter);
 api.use("/invites", invitesRouter);
 api.use("/demo", demoRouter);
+api.use("/catalog", catalogRouter);
 api.use(webhookRouter); //      /billing/webhook (unauthenticated, HMAC-verified)
 api.use(billingRouter); //      /workspaces/:id/billing, create-subscription, verify
 api.use(toolsRouter); //        /workspaces/:id/tools, /tools/:id, usage, import

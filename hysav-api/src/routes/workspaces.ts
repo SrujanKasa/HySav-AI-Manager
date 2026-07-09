@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { generateToken, hashPassword, hashToken } from "../crypto.ts";
-import { all, insert, insertIgnoreDup, now, one, update, uuid } from "../db.ts";
+import { all, insert, insertIgnoreDup, now, one, remove, update, uuid } from "../db.ts";
 import { env } from "../env.ts";
 import { HttpError, currentUser, parseBody, rateLimit, requireAuth, requireMembership } from "../middleware.ts";
 import { sendEmail } from "../services/email.ts";
+import { assertPlanWritable, workspacePlanStatus } from "../services/plan.ts";
 import { initialsFor } from "./auth.ts";
 
 export const workspacesRouter = Router();
@@ -52,6 +53,7 @@ const inviteSchema = z.object({
 
 workspacesRouter.post("/:id/invites", async (req, res) => {
   await requireMembership(req, req.params.id, true);
+  await assertPlanWritable(req.params.id);
   const user = currentUser(req);
   const body = parseBody(inviteSchema, req.body);
   const email = body.email.toLowerCase();
@@ -136,6 +138,68 @@ invitesRouter.post("/accept", rateLimit(10, 60_000), async (req, res) => {
   });
   await update("invites", { id: invite.id }, { accepted_at: ts });
   res.status(201).json({ workspaceId: invite.workspace_id, userId: user.id });
+});
+
+/* ---------- member management (admin) ----------
+   The workspace must always keep at least one admin — demoting or removing
+   the last one is refused, so a workspace can't lock itself out. */
+
+async function assertNotLastAdmin(workspaceId: string, userId: string): Promise<void> {
+  const target = await one<{ role: string }>("memberships", { user_id: userId, workspace_id: workspaceId });
+  if (!target) throw new HttpError(404, "That person is not in this workspace");
+  if (target.role !== "admin") return;
+  const admins = await all("memberships", { workspace_id: workspaceId, role: "admin" });
+  if (admins.length <= 1) {
+    throw new HttpError(400, "This is the workspace's only admin — promote someone else first");
+  }
+}
+
+const memberPatchSchema = z.object({
+  role: z.enum(["admin", "member"]).optional(),
+  title: z.string().max(120).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
+
+workspacesRouter.patch("/:id/members/:userId", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
+  const body = parseBody(memberPatchSchema, req.body);
+  const target = await one<{ role: string; title: string; color: string }>("memberships", {
+    user_id: req.params.userId,
+    workspace_id: req.params.id,
+  });
+  if (!target) throw new HttpError(404, "That person is not in this workspace");
+  if (body.role === "member") await assertNotLastAdmin(req.params.id, req.params.userId);
+  await update(
+    "memberships",
+    { user_id: req.params.userId, workspace_id: req.params.id },
+    {
+      role: body.role ?? target.role,
+      title: body.title ?? target.title,
+      color: body.color ?? target.color,
+    },
+  );
+  res.json({ userId: req.params.userId, role: body.role ?? target.role, title: body.title ?? target.title });
+});
+
+workspacesRouter.delete("/:id/members/:userId", async (req, res) => {
+  await requireMembership(req, req.params.id, true);
+  await assertNotLastAdmin(req.params.id, req.params.userId);
+  // detach from tools and prefs, then drop the membership; the user account
+  // itself stays (they may belong to other workspaces)
+  const toolIds = (await all<{ id: string }>("tools", { workspace_id: req.params.id })).map((t) => t.id);
+  if (toolIds.length > 0) {
+    await remove("tool_members", { user_id: req.params.userId, tool_id: { $in: toolIds } });
+  }
+  await remove("notification_prefs", { user_id: req.params.userId, workspace_id: req.params.id });
+  await remove("memberships", { user_id: req.params.userId, workspace_id: req.params.id });
+  res.status(204).end();
+});
+
+/* ---------- plan status (any member) ---------- */
+
+workspacesRouter.get("/:id/plan", async (req, res) => {
+  await requireMembership(req, req.params.id);
+  res.json(await workspacePlanStatus(req.params.id));
 });
 
 /* ---------- notification preferences ---------- */

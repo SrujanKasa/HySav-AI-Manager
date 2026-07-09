@@ -110,6 +110,64 @@ paths:
       responses:
         "200": { description: Updated }
 
+  /workspaces/{id}/members/{userId}:
+    patch:
+      tags: [workspaces]
+      summary: Change a member's role/title/color (admin)
+      description: Demoting the workspace's only admin is refused.
+      parameters:
+        - { $ref: "#/components/parameters/workspaceId" }
+        - { name: userId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { type: string, enum: [admin, member] }
+                title: { type: string }
+                color: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+      responses:
+        "200": { description: Updated }
+        "400": { description: Would remove the last admin }
+    delete:
+      tags: [workspaces]
+      summary: Remove a member from the workspace (admin)
+      description: >
+        Detaches them from tools and prefs; their user account survives.
+        Removing the only admin is refused.
+      parameters:
+        - { $ref: "#/components/parameters/workspaceId" }
+        - { name: userId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+        "400": { description: Would remove the last admin }
+
+  /workspaces/{id}/plan:
+    get:
+      tags: [billing]
+      summary: Plan gate status (any member)
+      description: >
+        active/reason (paid | trial | expired) + trialEndsAt/paidUntil. Write
+        endpoints (tool create/update, usage, imports, invites, integrations)
+        return 402 with a clear message when expired; reads and spend-reducing
+        actions (cancelling/deleting tools) always work.
+      parameters: [{ $ref: "#/components/parameters/workspaceId" }]
+      responses:
+        "200": { description: Plan status }
+
+  /catalog/tools:
+    get:
+      security: []
+      tags: [tools]
+      summary: Curated catalog of common AI tools (public, cacheable)
+      description: >
+        Slugs match the site's logo assets so pickers get icons for free;
+        entries carry category, typical credit unit, and which usage provider
+        (openai/anthropic/manual) fits.
+      responses:
+        "200": { description: Catalog entries }
+
   /workspaces/{id}/invites:
     post:
       tags: [workspaces]

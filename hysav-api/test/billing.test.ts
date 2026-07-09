@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  planStatus,
   quoteForMembers,
   trialEndsAt,
   verifyCheckoutSignature,
@@ -41,6 +42,39 @@ describe("quoteForMembers — ₹300 base, +₹100 above 3, +₹50/person beyond
 describe("trialEndsAt — Starter plan 3-day trial", () => {
   it("ends exactly 3 days after workspace creation", () => {
     expect(trialEndsAt("2026-07-01T00:00:00.000Z")).toBe("2026-07-04T00:00:00.000Z");
+  });
+});
+
+describe("planStatus — the gate for the whole product", () => {
+  const created = "2026-07-01T00:00:00.000Z";
+
+  it("is active (trial) within 3 days of workspace creation", () => {
+    const s = planStatus(created, null, "2026-07-03T23:59:00.000Z");
+    expect(s.active).toBe(true);
+    expect(s.reason).toBe("trial");
+  });
+
+  it("expires once the trial window passes with nothing paid", () => {
+    const s = planStatus(created, null, "2026-07-04T00:01:00.000Z");
+    expect(s.active).toBe(false);
+    expect(s.reason).toBe("expired");
+  });
+
+  it("a paid period keeps the workspace active after the trial", () => {
+    const s = planStatus(created, "2026-08-15T00:00:00.000Z", "2026-07-20T00:00:00.000Z");
+    expect(s.active).toBe(true);
+    expect(s.reason).toBe("paid");
+  });
+
+  it("an EXPIRED paid period falls back to expired, not trial", () => {
+    const s = planStatus(created, "2026-07-10T00:00:00.000Z", "2026-07-20T00:00:00.000Z");
+    expect(s.active).toBe(false);
+    expect(s.reason).toBe("expired");
+  });
+
+  it("paid wins over trial when both are live (reason says paid)", () => {
+    const s = planStatus(created, "2026-08-01T00:00:00.000Z", "2026-07-02T00:00:00.000Z");
+    expect(s.reason).toBe("paid");
   });
 });
 

@@ -55,6 +55,27 @@ export function trialEndsAt(workspaceCreatedAt: string): string {
   return new Date(new Date(workspaceCreatedAt).getTime() + PRICING.TRIAL_DAYS * 86_400_000).toISOString();
 }
 
+export interface PlanStatus {
+  active: boolean;
+  reason: "paid" | "trial" | "expired";
+  trialEndsAt: string;
+  paidUntil: string | null;
+}
+
+/** The one place that decides whether a workspace may use the product:
+ *  paid period wins, then the 3-day trial, then expired. Pure — callers pass
+ *  the timestamps, so tests can time-travel. */
+export function planStatus(workspaceCreatedAt: string, paidUntil: string | null, nowIso: string): PlanStatus {
+  const trialUntil = trialEndsAt(workspaceCreatedAt);
+  if (paidUntil && paidUntil > nowIso) {
+    return { active: true, reason: "paid", trialEndsAt: trialUntil, paidUntil };
+  }
+  if (trialUntil > nowIso) {
+    return { active: true, reason: "trial", trialEndsAt: trialUntil, paidUntil };
+  }
+  return { active: false, reason: "expired", trialEndsAt: trialUntil, paidUntil };
+}
+
 function safeEqualHex(aHex: string, bHex: string): boolean {
   const a = Buffer.from(aHex, "hex");
   const b = Buffer.from(bHex, "hex");
