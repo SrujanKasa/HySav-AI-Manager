@@ -49,7 +49,7 @@
 <script src="auth.js"></script>
 <script>
 (function () {
-  if (HySav.token()) { window.location.href = "account.html"; return; }
+  if (HySav.token()) { window.location.href = "dashboard.html"; return; }
   var form = document.getElementById("login-form");
   var err = document.getElementById("li-err");
   var btn = document.getElementById("li-submit");
@@ -78,7 +78,7 @@
       }
     }).then(function (data) {
       HySav.setToken(data.token);
-      window.location.href = "account.html";
+      window.location.href = "dashboard.html";
     }).catch(function (e2) {
       err.textContent = e2.message;
       err.classList.add("show");

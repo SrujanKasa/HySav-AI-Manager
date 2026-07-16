@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Join your team</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <nav class="nav-links">
+      <a class="btn btn-primary btn-sm" href="login.html">Log in</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <form class="auth-wrap" id="join-form" novalidate>
+    <h2>You're invited 🎉</h2>
+    <p class="auth-sub">Set up your account to join your team's workspace on HySav.</p>
+
+    <label for="jn-name">Your name</label>
+    <input type="text" id="jn-name" autocomplete="name" required />
+
+    <label for="jn-password">Choose a password <span class="muted small">(10+ characters)</span></label>
+    <input type="password" id="jn-password" autocomplete="new-password" minlength="10" required />
+
+    <div class="auth-err" id="jn-err" role="alert"></div>
+    <button class="btn btn-primary" type="submit" id="jn-submit">Join the workspace</button>
+    <p class="auth-alt">Already have an account with this email? Joining still works — you'll just <a href="login.html">log in</a> with your existing password afterwards.</p>
+  </form>
+</main>
+
+<script src="auth.js"></script>
+<script>
+(function () {
+  var token = new URLSearchParams(location.search).get("token");
+  var err = document.getElementById("jn-err");
+  var btn = document.getElementById("jn-submit");
+  if (!token) {
+    err.textContent = "This invite link is missing its token — ask your admin to send it again.";
+    err.classList.add("show");
+    btn.disabled = true;
+    return;
+  }
+  document.getElementById("join-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    err.classList.remove("show");
+    btn.disabled = true;
+    btn.textContent = "Joining…";
+    HySav.api("/invites/accept", {
+      method: "POST",
+      body: {
+        token: token,
+        name: document.getElementById("jn-name").value.trim(),
+        password: document.getElementById("jn-password").value
+      }
+    }).then(function () {
+      window.location.href = "login.html";
+    }).catch(function (e2) {
+      err.textContent = e2.message;
+      err.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Join the workspace";
+    });
+  });
+})();
+</script>
+</body>
+</html>

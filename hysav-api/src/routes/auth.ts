@@ -191,8 +191,8 @@ authRouter.get("/google/callback", async (req, res) => {
     user = { id: userId };
   }
   // token travels in the URL fragment (never sent to any server) and the
-  // account page moves it to localStorage immediately
-  res.redirect(`/account.html#token=${await createSession(user.id)}`);
+  // dashboard moves it to localStorage immediately
+  res.redirect(`/dashboard.html#token=${await createSession(user.id)}`);
 });
 
 export function initialsFor(name: string): string {

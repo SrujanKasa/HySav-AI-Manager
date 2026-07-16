@@ -104,6 +104,7 @@ export async function buildDashboard(workspaceId: string) {
         .filter((x): x is string => !!x);
       return {
         id: row.slug,
+        toolId: t.id, // real id for the authed dashboard's edit/usage actions
         name: t.name,
         plan: row.plan,
         cost: Math.round(monthlyCostCents(t) / 100),

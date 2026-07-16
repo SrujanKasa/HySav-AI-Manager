@@ -139,6 +139,8 @@ export function windowUsagePct(snapshots: SnapshotInput[], nowIso: string, windo
   // a negative delta (reset happened) is treated as "just what's used now".
   const inWindow = snapshots.filter((s) => s.capturedAt >= cutoff);
   if (inWindow.length === 0) return null;
+  // a single reading has no delta — take it as the window's absolute usage
+  if (inWindow.length === 1) return (latest.used / limit) * 100;
   const delta = latest.used - inWindow[0].used;
   const used = delta >= 0 ? delta : latest.used;
   return (used / limit) * 100;
@@ -160,7 +162,10 @@ export function analyzeTool(tool: ToolInput, snapshots: SnapshotInput[], nowIso:
   // 1. near-zero recent usage
   const recentPct = windowUsagePct(snapshots, nowIso, RULES.LOW_USAGE_WINDOW_DAYS);
   if (recentPct !== null && recentPct < RULES.LOW_USAGE_PCT) {
-    const wasted = Math.round(monthly * (1 - Math.max(forecast.projectedPctAtRenewal, recentPct) / 100));
+    // clamp: a fresh tool's forecast can project >100%, which must never
+    // turn "wasted spend" negative
+    const unusedShare = Math.max(0, 1 - Math.max(forecast.projectedPctAtRenewal, recentPct) / 100);
+    const wasted = Math.round(monthly * unusedShare);
     flags.push({
       toolId: tool.id,
       type: "low_usage",
@@ -229,10 +234,13 @@ export function analyzeTool(tool: ToolInput, snapshots: SnapshotInput[], nowIso:
     }
   }
 
-  // per-tool waste is capped at what the tool actually costs per month
-  const wastedCentsMonthly = Math.min(
-    monthly,
-    flags.reduce((s, f) => s + f.wastedCentsMonthly, 0),
+  // per-tool waste is bounded to [0, monthly cost] no matter what the rules sum to
+  const wastedCentsMonthly = Math.max(
+    0,
+    Math.min(
+      monthly,
+      flags.reduce((s, f) => s + f.wastedCentsMonthly, 0),
+    ),
   );
 
   const healthStatus: ToolInsight["healthStatus"] = flags.some(

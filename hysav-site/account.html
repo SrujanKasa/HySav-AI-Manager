@@ -22,7 +22,10 @@
       <span class="brand-tag">AI Monit</span>
     </a>
     <span class="demo-badge" id="ws-badge">…</span>
-    <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Sign out</button>
+    <span>
+      <a class="btn btn-primary btn-sm" href="dashboard.html">Open dashboard</a>
+      <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Sign out</button>
+    </span>
   </div>
 </header>
 
@@ -145,7 +148,8 @@
           payBtn.style.display = "none";
           badge.textContent = "Active";
           badge.className = "plan-badge ok";
-          document.getElementById("plan-status").textContent = "You're upgraded — payment confirmed. 🎉";
+          document.getElementById("plan-status").innerHTML =
+            'You\'re upgraded — payment confirmed. 🎉 <a href="dashboard.html">Open your dashboard →</a>';
         },
         onError: showErr,
         onDismiss: function () {

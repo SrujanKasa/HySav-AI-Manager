@@ -161,6 +161,17 @@ describe("analyzeTool — rule flags", () => {
     expect(flag!.wastedCentsMonthly).toBe(2_000); // $60 / 3 seats
   });
 
+  it("never produces negative waste for a just-added tool (regression)", () => {
+    // one snapshot minutes into a fresh period: forecast projects way past
+    // 100%, but low usage in absolute terms — waste must stay in [0, cost]
+    const tool = makeTool({ renewalDate: daysFromNow(29.9) });
+    const snaps: SnapshotInput[] = [{ capturedAt: NOW, used: 3, limit: 100 }];
+    const ins = analyzeTool(tool, snaps, NOW);
+    expect(ins.wastedCentsMonthly).toBeGreaterThanOrEqual(0);
+    expect(ins.wastedCentsMonthly).toBeLessThanOrEqual(10_000);
+    for (const f of ins.flags) expect(f.wastedCentsMonthly).toBeGreaterThanOrEqual(0);
+  });
+
   it("ignores cancelled tools entirely", () => {
     const tool = makeTool({ status: "cancelled" });
     const ins = analyzeTool(tool, ramp(9, 10), NOW);

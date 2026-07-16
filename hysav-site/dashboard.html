@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<!-- Brand name: "HySav" — find & replace this string across all files to rename -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HySav — Dashboard</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="demo-body">
+
+<!-- ============ TOP BAR ============ -->
+<header class="demo-topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="brand-hy">Hy</span><span class="brand-sav">Sav</span>
+      <span class="brand-div" aria-hidden="true"></span>
+      <span class="brand-tag">AI Monit</span>
+    </a>
+    <span class="demo-badge" id="ws-badge">…</span>
+    <span>
+      <a class="btn btn-ghost btn-sm" href="account.html">Account</a>
+      <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Sign out</button>
+    </span>
+  </div>
+</header>
+
+<main class="demo-main">
+  <div class="wrap">
+
+    <!-- plan banner (trial countdown / expired / payment success) -->
+    <div class="plan-banner" id="plan-banner" style="display:none"></div>
+
+    <!-- greeting -->
+    <div class="demo-greeting">
+      <h2 id="hello">Loading your workspace…</h2>
+      <p id="hello-sub"></p>
+    </div>
+
+    <!-- summary stats -->
+    <div class="stat-row">
+      <div class="stat">
+        <span class="lbl">Monthly AI spend</span>
+        <div class="val" id="st-spend">—</div>
+        <div class="sub" id="st-spend-sub"></div>
+      </div>
+      <div class="stat">
+        <span class="lbl">Active tools</span>
+        <div class="val" id="st-tools">—</div>
+        <div class="sub">tracked in this workspace</div>
+      </div>
+      <div class="stat waste">
+        <span class="lbl">Wasted spend</span>
+        <div class="val" id="st-waste">—</div>
+        <div class="sub" id="st-waste-sub">detected this month</div>
+      </div>
+      <div class="stat">
+        <span class="lbl">Renewals ≤ 7 days</span>
+        <div class="val" id="st-renew">—</div>
+        <div class="sub">act before they bill</div>
+      </div>
+    </div>
+
+    <!-- alerts -->
+    <div class="alerts" id="alerts"></div>
+
+    <!-- tabs -->
+    <div class="demo-tabs">
+      <button class="demo-tab on" data-tab="tools">Tools</button>
+      <button class="demo-tab" data-tab="team">Team</button>
+      <button class="demo-tab" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- ============ TOOLS ============ -->
+    <div id="view-tools">
+      <div class="demo-toolbar">
+        <div class="filter-chips" id="filter-chips">
+          <button class="fchip on" data-f="all">All</button>
+          <button class="fchip" data-f="healthy">Healthy</button>
+          <button class="fchip" data-f="under">Underused</button>
+          <button class="fchip" data-f="waste">Waste risk</button>
+          <button class="fchip" data-f="dup">Duplicates</button>
+          <button class="fchip" data-f="cancelled">Cancelled</button>
+        </div>
+        <button class="btn btn-primary" id="add-tool-btn" type="button">+ Add a tool</button>
+      </div>
+      <div class="tool-grid" id="tool-grid"></div>
+      <div class="empty-state" id="tools-empty" style="display:none">
+        <h3>No tools yet.</h3>
+        <p class="muted">Add the AI subscriptions your team pays for — takes about a minute per tool.</p>
+        <button class="btn btn-primary" type="button" onclick="document.getElementById('add-tool-btn').click()">Add your first tool</button>
+      </div>
+    </div>
+
+    <!-- ============ TEAM ============ -->
+    <div id="view-team" style="display:none">
+      <div class="panel" style="margin-bottom:16px" id="invite-panel">
+        <h3>Invite a teammate</h3>
+        <div class="inline-form">
+          <input type="email" id="inv-email" placeholder="teammate@company.com" />
+          <select id="inv-role"><option value="member">Member</option><option value="admin">Admin</option></select>
+          <button class="btn btn-primary" id="inv-btn" type="button">Send invite</button>
+        </div>
+        <p class="billing-note" id="inv-result" style="display:none"></p>
+      </div>
+      <div class="team-list" id="team-list"></div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div id="view-settings" style="display:none">
+      <div class="account-grid">
+        <div class="panel">
+          <h3>Live usage integrations</h3>
+          <p class="billing-note">Connect a provider's admin key and usage syncs itself instead of being typed in.
+            Keys are encrypted at rest; only the last 4 characters are ever shown again.</p>
+          <div id="integrations-list"></div>
+          <div class="inline-form" style="margin-top:14px">
+            <select id="int-provider">
+              <option value="openai">OpenAI (org Costs API)</option>
+              <option value="anthropic">Anthropic (Admin cost report)</option>
+            </select>
+            <input type="password" id="int-key" placeholder="Admin API key" />
+            <button class="btn btn-primary" id="int-connect" type="button">Connect</button>
+          </div>
+          <p class="billing-note" id="int-result" style="display:none"></p>
+        </div>
+        <div class="panel">
+          <h3>Email notifications</h3>
+          <label class="pref-row"><input type="checkbox" id="pref-waste" /> Waste alerts (a tool trending toward wasted credits)</label>
+          <label class="pref-row"><input type="checkbox" id="pref-renewal" /> Renewal warnings for unused tools</label>
+          <label class="pref-row"><input type="checkbox" id="pref-digest" /> Weekly summary digest</label>
+          <p class="billing-note" id="pref-result" style="display:none">Saved.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ============ ADD / EDIT TOOL MODAL ============ -->
+<div class="modal-overlay" id="tool-modal" style="display:none">
+  <div class="modal">
+    <h3 id="modal-title">Add a tool</h3>
+    <form id="tool-form" novalidate>
+      <label>Pick from the catalog <span class="muted small">(or type your own below)</span></label>
+      <select id="tf-catalog"><option value="">— Custom tool —</option></select>
+
+      <div class="form-2col">
+        <div>
+          <label for="tf-name">Name</label>
+          <input type="text" id="tf-name" required maxlength="120" />
+        </div>
+        <div>
+          <label for="tf-category">Category</label>
+          <select id="tf-category">
+            <option value="llm-chat">LLM chat</option>
+            <option value="coding-assistant">Coding assistant</option>
+            <option value="image-gen">Image generation</option>
+            <option value="video-gen">Video generation</option>
+            <option value="copywriting">Copywriting</option>
+            <option value="voice">Voice / audio</option>
+            <option value="search">Search / research</option>
+            <option value="productivity">Productivity</option>
+            <option value="presentation">Presentations</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="tf-cost">Cost per month (₹)</label>
+          <input type="number" id="tf-cost" min="0" step="1" required />
+        </div>
+        <div>
+          <label for="tf-renewal">Next renewal date</label>
+          <input type="date" id="tf-renewal" required />
+        </div>
+        <div>
+          <label for="tf-limit">Credit limit / period <span class="muted small">(optional)</span></label>
+          <input type="number" id="tf-limit" min="0" step="any" />
+        </div>
+        <div>
+          <label for="tf-unit">Credit unit</label>
+          <input type="text" id="tf-unit" placeholder="messages, GPU hours…" maxlength="60" />
+        </div>
+        <div>
+          <label for="tf-plan">Plan name</label>
+          <input type="text" id="tf-plan" placeholder="Pro · 2 seats" maxlength="120" />
+        </div>
+        <div>
+          <label for="tf-status">Status</label>
+          <select id="tf-status">
+            <option value="active">Active</option>
+            <option value="trial">Trial</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Who uses it?</label>
+      <div class="t-users" id="tf-members"></div>
+
+      <label for="tf-used">Current usage this period <span class="muted small">(optional — in the unit above)</span></label>
+      <input type="number" id="tf-used" min="0" step="any" />
+
+      <div class="auth-err" id="tf-err" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" id="tf-cancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="tf-save">Save tool</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="auth.js"></script>
+<script src="billing.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

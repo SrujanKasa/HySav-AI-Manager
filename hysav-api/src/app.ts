@@ -66,6 +66,10 @@ api.use(insightsRouter); //     /workspaces/:id/insights, /dashboard, notificati
 
 app.use("/api/v1", api);
 // Static site for the local single-process setup; on Vercel the static files
-// are served by the CDN and only /api/* ever reaches this app.
+// are served by the CDN (cleanUrls maps /join → join.html) and only /api/*
+// ever reaches this app. Locally we map the invite link path explicitly.
+app.get("/join", (_req, res) => {
+  res.sendFile(join(here, "..", "..", "hysav-site", "join.html"));
+});
 app.use(express.static(join(here, "..", "..", "hysav-site")));
 app.use(errorHandler);
