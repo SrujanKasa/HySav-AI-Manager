@@ -7,6 +7,9 @@
   "rewrites": [
     { "source": "/api/v1/:path*", "destination": "/api/index" }
   ],
+  "crons": [
+    { "path": "/api/v1/jobs/daily", "schedule": "30 3 * * *" }
+  ],
   "functions": {
     "api/index.ts": {
       "includeFiles": "hysav-api/openapi.yaml"

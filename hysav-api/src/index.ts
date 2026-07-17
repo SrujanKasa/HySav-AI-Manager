@@ -5,6 +5,7 @@ import { app } from "./app.ts";
 import { env } from "./env.ts";
 import { all } from "./db.ts";
 import { scanWorkspace, sendDigest } from "./services/alerts.ts";
+import { syncEverything } from "./services/sync.ts";
 
 app.listen(env.port, () => {
   console.log(`HySav API + site on http://localhost:${env.port} (docs: /api/v1/openapi.yaml)`);
@@ -33,5 +34,14 @@ async function digestAllWorkspaces(): Promise<void> {
     }
   }
 }
+async function syncAllIntegrations(): Promise<void> {
+  try {
+    const r = await syncEverything();
+    if (r.synced + r.failed > 0) console.log(`[jobs] auto-sync: ${r.synced} ok, ${r.failed} failed across ${r.workspaces} workspaces`);
+  } catch (err) {
+    console.error("[jobs] auto-sync sweep failed:", (err as Error).message);
+  }
+}
+setInterval(syncAllIntegrations, HOUR).unref();
 setInterval(scanAllWorkspaces, HOUR).unref();
 setInterval(digestAllWorkspaces, 24 * HOUR).unref();

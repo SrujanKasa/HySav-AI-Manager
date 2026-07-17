@@ -154,7 +154,9 @@
     return '<div class="tool-card' + (cancelled ? " cancelled" : "") + '" data-id="' + esc(t.id) + '">' +
       '<div class="t-top">' +
         '<span class="t-logo"><img src="assets/logos/' + esc(t.slug) + '.png" alt="" onerror="this.parentElement.textContent=\'' + esc((t.name[0] || "?").toUpperCase()) + '\'"/></span>' +
-        '<span class="t-id"><span class="t-name">' + esc(t.name) + '</span><br/><span class="t-plan">' + esc(t.plan || t.category) + "</span></span>" +
+        '<span class="t-id"><span class="t-name">' + esc(t.name) + '</span><br/><span class="t-plan">' + esc(t.plan || t.category) +
+          (t.usageSource && t.usageSource !== "manual" ? ' <span class="auto-tag" title="Usage updates automatically via ' + esc(t.usageSource) + '">⚡ auto</span>' : "") +
+        "</span></span>" +
         '<span class="t-cost"><span class="c">' + rupees(monthly / 100) + '</span><br/><span class="per">/month</span></span>' +
       "</div>" +
       (info && !cancelled

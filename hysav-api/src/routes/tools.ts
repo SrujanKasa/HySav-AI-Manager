@@ -37,7 +37,7 @@ const toolSchema = z.object({
   renewalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "ISO date required"),
   creditLimit: z.number().positive().nullish(),
   creditUnit: z.string().max(60).nullish(),
-  usageSource: z.enum(["manual", "openai", "anthropic", "vercel"]).default("manual"),
+  usageSource: z.enum(["manual", "openai", "anthropic", "elevenlabs", "openrouter", "vercel"]).default("manual"),
   note: z.string().max(2000).nullish(),
   memberIds: z.array(z.string()).max(100).default([]),
 });

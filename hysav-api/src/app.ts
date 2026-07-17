@@ -12,6 +12,7 @@ import { toolsRouter } from "./routes/tools.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { demoRouter, insightsRouter } from "./routes/insights.ts";
 import { catalogRouter } from "./routes/catalog.ts";
+import { jobsRouter } from "./routes/jobs.ts";
 import { billingRouter, rawBodies, webhookRouter } from "./routes/billing.ts";
 import { seedDemoWorkspace, seedTestAccount } from "./seed.ts";
 
@@ -58,6 +59,7 @@ api.use("/workspaces", workspacesRouter);
 api.use("/invites", invitesRouter);
 api.use("/demo", demoRouter);
 api.use("/catalog", catalogRouter);
+api.use("/jobs", jobsRouter); //  Vercel Cron (CRON_SECRET-authenticated)
 api.use(webhookRouter); //      /billing/webhook (unauthenticated, HMAC-verified)
 api.use(billingRouter); //      /workspaces/:id/billing, create-subscription, verify
 api.use(toolsRouter); //        /workspaces/:id/tools, /tools/:id, usage, import

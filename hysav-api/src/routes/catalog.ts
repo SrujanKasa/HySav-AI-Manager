@@ -11,7 +11,7 @@ interface CatalogEntry {
   name: string;
   category: string;
   creditUnit: string | null;
-  usageSource: "manual" | "openai" | "anthropic" | "vercel";
+  usageSource: "manual" | "openai" | "anthropic" | "elevenlabs" | "openrouter" | "vercel";
   hasLogo: boolean;
   typicalPlans: string[];
 }
@@ -26,7 +26,8 @@ const CATALOG: CatalogEntry[] = [
   { slug: "perplexity", name: "Perplexity", category: "search", creditUnit: "pro searches", usageSource: "manual", hasLogo: true, typicalPlans: ["Pro"] },
   { slug: "jasper", name: "Jasper", category: "copywriting", creditUnit: "word credits", usageSource: "manual", hasLogo: true, typicalPlans: ["Creator", "Pro"] },
   { slug: "copyai", name: "Copy.ai", category: "copywriting", creditUnit: "word credits", usageSource: "manual", hasLogo: true, typicalPlans: ["Pro"] },
-  { slug: "elevenlabs", name: "ElevenLabs", category: "voice", creditUnit: "character quota", usageSource: "manual", hasLogo: true, typicalPlans: ["Starter", "Creator"] },
+  { slug: "elevenlabs", name: "ElevenLabs", category: "voice", creditUnit: "characters", usageSource: "elevenlabs", hasLogo: true, typicalPlans: ["Starter", "Creator"] },
+  { slug: "openrouter", name: "OpenRouter", category: "llm-chat", creditUnit: "USD credits", usageSource: "openrouter", hasLogo: false, typicalPlans: ["Pay as you go"] },
   { slug: "notion", name: "Notion AI", category: "productivity", creditUnit: "AI responses", usageSource: "manual", hasLogo: true, typicalPlans: ["AI add-on"] },
   { slug: "gamma", name: "Gamma", category: "presentation", creditUnit: "AI credits", usageSource: "manual", hasLogo: true, typicalPlans: ["Plus", "Pro"] },
   { slug: "openai-api", name: "OpenAI API", category: "llm-chat", creditUnit: "USD spend", usageSource: "openai", hasLogo: false, typicalPlans: ["Pay as you go"] },

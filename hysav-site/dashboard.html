@@ -116,13 +116,16 @@
       <div class="account-grid">
         <div class="panel">
           <h3>Live usage integrations</h3>
-          <p class="billing-note">Connect a provider's admin key and usage syncs itself instead of being typed in.
-            Keys are encrypted at rest; only the last 4 characters are ever shown again.</p>
+          <p class="billing-note">Connect a key once and those tools update themselves — on a daily schedule and
+            every time you open this dashboard. Tools whose vendors expose no usage API (most of them,
+            honestly) stay manual. Keys are encrypted at rest; only the last 4 characters are ever shown again.</p>
           <div id="integrations-list"></div>
           <div class="inline-form" style="margin-top:14px">
             <select id="int-provider">
               <option value="openai">OpenAI (org Costs API)</option>
               <option value="anthropic">Anthropic (Admin cost report)</option>
+              <option value="elevenlabs">ElevenLabs (subscription API)</option>
+              <option value="openrouter">OpenRouter (credits API)</option>
             </select>
             <input type="password" id="int-key" placeholder="Admin API key" />
             <button class="btn btn-primary" id="int-connect" type="button">Connect</button>

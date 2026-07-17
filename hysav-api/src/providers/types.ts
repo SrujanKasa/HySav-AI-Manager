@@ -26,7 +26,7 @@ export interface SyncContext {
 }
 
 export interface UsageProvider {
-  id: "manual" | "openai" | "anthropic" | "vercel";
+  id: "manual" | "openai" | "anthropic" | "elevenlabs" | "openrouter" | "vercel";
   displayName: string;
   /** false ⇒ entry in the UI is manual-only; sync() must not be called */
   supportsLiveSync: boolean;

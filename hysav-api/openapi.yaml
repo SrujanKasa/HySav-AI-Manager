@@ -325,8 +325,11 @@ paths:
       summary: Pull fresh usage from the provider API (admin)
       description: >
         Syncs every tool whose usage_source matches the provider. Live today:
-        openai (org Costs API, Admin key), anthropic (Admin cost report).
-        vercel is stubbed and rejects sync.
+        openai (org Costs API, Admin key), anthropic (Admin cost report),
+        elevenlabs (subscription API), openrouter (credits API). vercel is
+        stubbed and rejects sync. Connected tools also sync automatically:
+        on dashboard load when >6h stale, hourly (long-running server), and
+        daily via Vercel Cron (GET /jobs/daily, CRON_SECRET bearer).
       parameters:
         - { $ref: "#/components/parameters/workspaceId" }
         - { name: provider, in: path, required: true, schema: { type: string } }

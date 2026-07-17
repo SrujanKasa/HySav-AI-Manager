@@ -5,6 +5,7 @@ import { Router } from "express";
 import { all, one } from "../db.ts";
 import { HttpError, requireAuth, requireMembership } from "../middleware.ts";
 import { scanWorkspace, sendDigest } from "../services/alerts.ts";
+import { syncWorkspaceIfStale } from "../services/sync.ts";
 import { loadWorkspaceToolInputs, type ToolRow } from "../services/toolData.ts";
 import {
   buildWasteReport,
@@ -25,6 +26,14 @@ insightsRouter.get("/workspaces/:id/insights", async (req, res) => {
 
 insightsRouter.get("/workspaces/:id/dashboard", async (req, res) => {
   await requireMembership(req, req.params.id);
+  // auto-sync: refresh any connected integration whose data is >6h old, so
+  // opening the dashboard is enough to keep connected tools current. Never
+  // allowed to break the dashboard itself.
+  try {
+    await syncWorkspaceIfStale(req.params.id, 6);
+  } catch (err) {
+    console.error("[sync] opportunistic sync failed:", (err as Error).message);
+  }
   res.json(await buildDashboard(req.params.id));
 });
 

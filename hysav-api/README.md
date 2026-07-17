@@ -62,7 +62,15 @@ openapi.yaml            API contract (also served at /api/v1/openapi.yaml)
 | Manual / CSV | ✅ default path | `POST /tools/:id/usage`, `POST /workspaces/:id/tools/import` |
 | OpenAI    | ✅ live | org **Costs API** (`/v1/organization/costs`), needs an Admin key |
 | Anthropic | ✅ live | Admin API **cost report** (`/v1/organizations/cost_report`) |
+| ElevenLabs | ✅ live | **subscription API** (`/v1/user/subscription`) — character usage + limit, regular key |
+| OpenRouter | ✅ live | **credits API** (`/api/v1/credits`) — usage vs purchased credits, regular key |
 | Vercel    | 🔶 stubbed | official usage API exists; sync intentionally unimplemented until verified against a real account |
+
+**Auto-sync** (`src/services/sync.ts`): connected tools update themselves —
+opportunistically when the dashboard loads (data >6h old), hourly on the
+long-running server, and daily in production via Vercel Cron hitting
+`GET /api/v1/jobs/daily` (authenticated with `CRON_SECRET`). Tools whose
+vendors expose no usage API remain manual — deliberately, no scrapers.
 
 All of them implement the same `UsageProvider` interface and write to the same
 `usage_snapshots` table, so the waste engine never knows whether a number came
