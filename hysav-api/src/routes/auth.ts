@@ -107,21 +107,59 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // short-lived anti-CSRF state tokens for the OAuth round-trip
 const oauthStates = new Map<string, number>();
 
+function issueOauthState(): string {
+  const state = generateToken();
+  oauthStates.set(state, Date.now() + 10 * 60_000);
+  for (const [s, exp] of oauthStates) if (exp < Date.now()) oauthStates.delete(s);
+  return state;
+}
+
+function consumeOauthState(state: string | null): boolean {
+  if (!state || !oauthStates.has(state) || oauthStates.get(state)! < Date.now()) return false;
+  oauthStates.delete(state);
+  return true;
+}
+
+/** Shared by every social login: find the account by verified email or create
+ *  it (+ a workspace, same shape as /register) with an unusable random
+ *  password — the social provider is their login. */
+async function findOrCreateOauthUser(email: string, displayName: string): Promise<string> {
+  const existing = await one<{ id: string }>("users", { email });
+  if (existing) return existing.id;
+  const ts = now();
+  const userId = uuid();
+  const workspaceId = uuid();
+  await insert("users", { id: userId, email, name: displayName, password_hash: hashPassword(randomUUID()), created_at: ts });
+  await insert("workspaces", { id: workspaceId, name: `${displayName.split(" ")[0]}'s team`, created_at: ts });
+  await insert("memberships", {
+    user_id: userId,
+    workspace_id: workspaceId,
+    role: "admin",
+    initials: initialsFor(displayName),
+    color: "#E4570F",
+    title: "Admin",
+    created_at: ts,
+  });
+  return userId;
+}
+
 function googleRedirectUri(): string {
   return `${env.baseUrl}/api/v1/auth/google/callback`;
 }
 
 authRouter.get("/methods", (_req, res) => {
-  res.json({ password: true, google: !!(env.googleClientId && env.googleClientSecret) });
+  res.json({
+    password: true,
+    google: !!(env.googleClientId && env.googleClientSecret),
+    github: !!(env.githubClientId && env.githubClientSecret),
+  });
 });
 
 authRouter.get("/google", (_req, res) => {
   if (!env.googleClientId || !env.googleClientSecret) {
     throw new HttpError(503, "Google login is not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET");
   }
-  const state = generateToken();
-  oauthStates.set(state, Date.now() + 10 * 60_000);
-  for (const [s, exp] of oauthStates) if (exp < Date.now()) oauthStates.delete(s);
+  const state = issueOauthState();
   const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("client_id", env.googleClientId);
   url.searchParams.set("redirect_uri", googleRedirectUri());
@@ -138,10 +176,9 @@ authRouter.get("/google/callback", async (req, res) => {
   };
   const code = typeof req.query.code === "string" ? req.query.code : null;
   const state = typeof req.query.state === "string" ? req.query.state : null;
-  if (!code || !state || !oauthStates.has(state) || oauthStates.get(state)! < Date.now()) {
+  if (!code || !consumeOauthState(state)) {
     return fail("missing or expired code/state");
   }
-  oauthStates.delete(state);
 
   const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
@@ -169,30 +206,72 @@ authRouter.get("/google/callback", async (req, res) => {
   if (!profile.email || profile.email_verified === false) return fail("no verified email");
 
   const email = profile.email.toLowerCase();
-  const displayName = profile.name || email.split("@")[0];
-  let user = await one<{ id: string }>("users", { email });
-  const ts = now();
-  if (!user) {
-    // first Google sign-in: create the account + a workspace, same shape as
-    // /register. Password is a random unusable hash — Google is their login.
-    const userId = uuid();
-    const workspaceId = uuid();
-    await insert("users", { id: userId, email, name: displayName, password_hash: hashPassword(randomUUID()), created_at: ts });
-    await insert("workspaces", { id: workspaceId, name: `${displayName.split(" ")[0]}'s team`, created_at: ts });
-    await insert("memberships", {
-      user_id: userId,
-      workspace_id: workspaceId,
-      role: "admin",
-      initials: initialsFor(displayName),
-      color: "#E4570F",
-      title: "Admin",
-      created_at: ts,
-    });
-    user = { id: userId };
-  }
+  const userId = await findOrCreateOauthUser(email, profile.name || email.split("@")[0]);
   // token travels in the URL fragment (never sent to any server) and the
   // dashboard moves it to localStorage immediately
-  res.redirect(`/dashboard.html#token=${await createSession(user.id)}`);
+  res.redirect(`/dashboard.html#token=${await createSession(userId)}`);
+});
+
+/* ---------- GitHub OAuth (same pattern) ---------- */
+
+function githubRedirectUri(): string {
+  return `${env.baseUrl}/api/v1/auth/github/callback`;
+}
+
+authRouter.get("/github", (_req, res) => {
+  if (!env.githubClientId || !env.githubClientSecret) {
+    throw new HttpError(503, "GitHub login is not configured — set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET");
+  }
+  const url = new URL("https://github.com/login/oauth/authorize");
+  url.searchParams.set("client_id", env.githubClientId);
+  url.searchParams.set("redirect_uri", githubRedirectUri());
+  url.searchParams.set("scope", "read:user user:email");
+  url.searchParams.set("state", issueOauthState());
+  res.redirect(url.toString());
+});
+
+authRouter.get("/github/callback", async (req, res) => {
+  const fail = (reason: string): void => {
+    console.error(`[auth] github oauth failed: ${reason}`);
+    res.redirect("/login.html#error=github");
+  };
+  const code = typeof req.query.code === "string" ? req.query.code : null;
+  const state = typeof req.query.state === "string" ? req.query.state : null;
+  if (!code || !consumeOauthState(state)) return fail("missing or expired code/state");
+
+  const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.githubClientId!,
+      client_secret: env.githubClientSecret!,
+      redirect_uri: githubRedirectUri(),
+    }),
+  });
+  if (!tokenRes.ok) return fail(`token exchange returned ${tokenRes.status}`);
+  const tokens = (await tokenRes.json()) as { access_token?: string };
+  if (!tokens.access_token) return fail("no access_token in response");
+
+  const ghHeaders = { Authorization: `Bearer ${tokens.access_token}`, "User-Agent": "HySav" };
+  const userRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
+  if (!userRes.ok) return fail(`user API returned ${userRes.status}`);
+  const gh = (await userRes.json()) as { name?: string; login?: string; email?: string | null };
+
+  // the profile email is often null — the /user/emails endpoint has the
+  // verified primary address
+  let email = gh.email;
+  if (!email) {
+    const emailsRes = await fetch("https://api.github.com/user/emails", { headers: ghHeaders });
+    if (emailsRes.ok) {
+      const emails = (await emailsRes.json()) as { email: string; primary: boolean; verified: boolean }[];
+      email = emails.find((e) => e.primary && e.verified)?.email ?? emails.find((e) => e.verified)?.email ?? null;
+    }
+  }
+  if (!email) return fail("no verified email on the GitHub account");
+
+  const userId = await findOrCreateOauthUser(email.toLowerCase(), gh.name || gh.login || email.split("@")[0]);
+  res.redirect(`/dashboard.html#token=${await createSession(userId)}`);
 });
 
 export function initialsFor(name: string): string {

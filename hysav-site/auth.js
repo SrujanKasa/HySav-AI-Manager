@@ -35,3 +35,37 @@ var HySav = (function () {
 
   return { token: token, setToken: setToken, clearToken: clearToken, api: api, logout: logout };
 })();
+
+/* Show/hide toggle on every password field (login, signup, join, API keys).
+   Purely client-side visibility — nothing about the value changes. */
+(function () {
+  var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A16.7 16.7 0 0 0 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+
+  function enhance(input) {
+    if (input.getAttribute("data-pw-enhanced")) return;
+    input.setAttribute("data-pw-enhanced", "1");
+    var wrap = document.createElement("span");
+    wrap.className = "pw-wrap";
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pw-toggle";
+    btn.setAttribute("aria-label", "Show password");
+    btn.innerHTML = EYE;
+    btn.addEventListener("click", function () {
+      var show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.innerHTML = show ? EYE_OFF : EYE;
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      input.focus();
+    });
+    wrap.appendChild(btn);
+  }
+  function run() {
+    document.querySelectorAll('input[type="password"]').forEach(enhance);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+  else run();
+})();

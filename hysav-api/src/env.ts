@@ -42,6 +42,11 @@ export const env = {
   // button until both values are set.
   googleClientId: process.env.GOOGLE_CLIENT_ID || null,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
+  // GitHub OAuth (optional). Create an OAuth App at
+  // https://github.com/settings/developers with callback URL
+  // <BASE_URL>/api/v1/auth/github/callback. Button hides until set.
+  githubClientId: process.env.GITHUB_CLIENT_ID || null,
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || null,
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || null,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || null,
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || null,

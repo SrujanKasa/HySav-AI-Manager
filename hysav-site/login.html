@@ -42,6 +42,7 @@
     <div class="auth-err" id="li-err" role="alert"></div>
     <button class="btn btn-primary" type="submit" id="li-submit">Log in</button>
     <a class="btn btn-ghost" id="google-btn" href="/api/v1/auth/google" style="display:none;width:100%;justify-content:center;margin-top:12px">Continue with Google</a>
+    <a class="btn btn-ghost" id="github-btn" href="/api/v1/auth/github" style="display:none;width:100%;justify-content:center;margin-top:12px">Continue with GitHub</a>
     <p class="auth-alt">New here? <a href="signup.html">Create a workspace</a> — 3-day free trial of everything.</p>
   </form>
 </main>
@@ -54,14 +55,16 @@
   var err = document.getElementById("li-err");
   var btn = document.getElementById("li-submit");
 
-  // show the Google button only when the backend has OAuth configured
+  // show social buttons only when the backend has that OAuth configured
   HySav.api("/auth/methods").then(function (m) {
     if (m.google) document.getElementById("google-btn").style.display = "";
+    if (m.github) document.getElementById("github-btn").style.display = "";
   }).catch(function () { /* static hosting / API down — password form still shows */ });
 
-  // bounced back from a failed Google sign-in
-  if (location.hash === "#error=google") {
-    err.textContent = "Google sign-in didn't complete — try again or use your password.";
+  // bounced back from a failed social sign-in
+  var errMatch = location.hash.match(/^#error=(google|github)$/);
+  if (errMatch) {
+    err.textContent = (errMatch[1] === "google" ? "Google" : "GitHub") + " sign-in didn't complete — try again or use your password.";
     err.classList.add("show");
     history.replaceState(null, "", location.pathname);
   }

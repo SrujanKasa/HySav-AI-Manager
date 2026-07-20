@@ -639,6 +639,24 @@ footer a:hover { color: var(--ink); }
 }
 .auth-wrap input:focus { border-color: var(--ember); }
 .auth-wrap .btn { width: 100%; justify-content: center; margin-top: 24px; }
+/* password show/hide (auth.js wraps every password input) */
+.pw-wrap { position: relative; display: block; flex: 1; min-width: 160px; }
+.pw-wrap input { width: 100%; padding-right: 44px; }
+.pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  padding: 4px;
+  line-height: 0;
+}
+.pw-toggle:hover { color: var(--ink); }
+.pw-toggle svg { width: 18px; height: 18px; }
+
 .auth-err {
   display: none;
   background: var(--red-soft);
